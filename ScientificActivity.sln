@@ -1,0 +1,76 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36511.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivity", "ScientificActivity\ScientificActivity.csproj", "{FD073B1A-BC71-4831-B186-A6ADF71BC0EC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{091EB354-21BF-4D2F-A910-F0E2323CF325} = {091EB354-21BF-4D2F-A910-F0E2323CF325}
+		{72174277-844A-407D-92CE-E71601924F95} = {72174277-844A-407D-92CE-E71601924F95}
+		{9FF1D971-067A-4666-BC08-29E8D6517B1A} = {9FF1D971-067A-4666-BC08-29E8D6517B1A}
+		{AF686D5D-DCF1-45FF-AB5F-186BD3716D15} = {AF686D5D-DCF1-45FF-AB5F-186BD3716D15}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityDataModels", "ScientificActivityDataModels\ScientificActivityDataModels.csproj", "{091EB354-21BF-4D2F-A910-F0E2323CF325}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityContracts", "ScientificActivityContracts\ScientificActivityContracts.csproj", "{9FF1D971-067A-4666-BC08-29E8D6517B1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityDatabaseImplement", "ScientificActivityDatabaseImplement\ScientificActivityDatabaseImplement.csproj", "{AF686D5D-DCF1-45FF-AB5F-186BD3716D15}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityBusinessLogics", "ScientificActivityBusinessLogics\ScientificActivityBusinessLogics.csproj", "{72174277-844A-407D-92CE-E71601924F95}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityRestApi", "ScientificActivityRestApi\ScientificActivityRestApi.csproj", "{A46412E5-16EF-43D3-A2CB-58E54E3A70E6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2A4E7A06-90F5-4008-82EA-809C9C89A1F3} = {2A4E7A06-90F5-4008-82EA-809C9C89A1F3}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityClientApp", "ScientificActivityClientApp\ScientificActivityClientApp.csproj", "{0FE7A2D7-791D-4376-B05E-D486CC577B7D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScientificActivityParsers", "ScientificActivityParsers\ScientificActivityParsers.csproj", "{2A4E7A06-90F5-4008-82EA-809C9C89A1F3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FD073B1A-BC71-4831-B186-A6ADF71BC0EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD073B1A-BC71-4831-B186-A6ADF71BC0EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD073B1A-BC71-4831-B186-A6ADF71BC0EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD073B1A-BC71-4831-B186-A6ADF71BC0EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{091EB354-21BF-4D2F-A910-F0E2323CF325}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{091EB354-21BF-4D2F-A910-F0E2323CF325}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{091EB354-21BF-4D2F-A910-F0E2323CF325}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{091EB354-21BF-4D2F-A910-F0E2323CF325}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9FF1D971-067A-4666-BC08-29E8D6517B1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9FF1D971-067A-4666-BC08-29E8D6517B1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9FF1D971-067A-4666-BC08-29E8D6517B1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9FF1D971-067A-4666-BC08-29E8D6517B1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF686D5D-DCF1-45FF-AB5F-186BD3716D15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF686D5D-DCF1-45FF-AB5F-186BD3716D15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF686D5D-DCF1-45FF-AB5F-186BD3716D15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF686D5D-DCF1-45FF-AB5F-186BD3716D15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72174277-844A-407D-92CE-E71601924F95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72174277-844A-407D-92CE-E71601924F95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72174277-844A-407D-92CE-E71601924F95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72174277-844A-407D-92CE-E71601924F95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A46412E5-16EF-43D3-A2CB-58E54E3A70E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A46412E5-16EF-43D3-A2CB-58E54E3A70E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A46412E5-16EF-43D3-A2CB-58E54E3A70E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A46412E5-16EF-43D3-A2CB-58E54E3A70E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0FE7A2D7-791D-4376-B05E-D486CC577B7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0FE7A2D7-791D-4376-B05E-D486CC577B7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0FE7A2D7-791D-4376-B05E-D486CC577B7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0FE7A2D7-791D-4376-B05E-D486CC577B7D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A4E7A06-90F5-4008-82EA-809C9C89A1F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A4E7A06-90F5-4008-82EA-809C9C89A1F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A4E7A06-90F5-4008-82EA-809C9C89A1F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A4E7A06-90F5-4008-82EA-809C9C89A1F3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5F272B7F-A4B7-4F22-8C43-7F2E9C0D8345}
+	EndGlobalSection
+EndGlobal

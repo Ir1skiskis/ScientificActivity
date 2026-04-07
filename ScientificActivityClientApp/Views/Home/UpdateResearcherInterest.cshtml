@@ -1,0 +1,38 @@
+﻿@{
+    ViewData["Title"] = "Редактирование интереса";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card mt-4">
+            <div class="card-header text-center">
+                <h4>Редактировать научный интерес</h4>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.Error</div>
+                }
+
+                <form method="post" asp-action="UpdateResearcherInterest">
+                    <input type="hidden" name="id" value="@ViewBag.InterestId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Ключевое слово</label>
+                        <input type="text" name="keyword" class="form-control" value="@ViewBag.Keyword" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Вес</label>
+                        <input type="number" step="0.01" min="0.01" name="weight" class="form-control" value="@ViewBag.Weight" required />
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <a asp-action="ResearcherInterests" class="btn btn-outline-secondary">Назад</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,74 @@
+﻿@{
+    ViewData["Title"] = "Редактировать грант";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-4">
+            <div class="card-header text-center"><h4>Редактировать грант</h4></div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.Error</div>
+                }
+
+                <form method="post" asp-action="UpdateGrant">
+                    <input type="hidden" name="id" value="@ViewBag.GrantId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="title" class="form-control" value="@ViewBag.TitleValue" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control">@ViewBag.DescriptionValue</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Организация</label>
+                        <input type="text" name="organization" class="form-control" value="@ViewBag.OrganizationValue" required />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" name="startDate" class="form-control" value="@ViewBag.StartDateValue" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" name="endDate" class="form-control" value="@ViewBag.EndDateValue" required />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Сумма</label>
+                            <input type="number" step="0.01" name="amount" class="form-control" value="@ViewBag.AmountValue" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Валюта</label>
+                            <input type="text" name="currency" class="form-control" value="@ViewBag.CurrencyValue" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тематика</label>
+                        <input type="text" name="subjectArea" class="form-control" value="@ViewBag.SubjectAreaValue" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Статус</label>
+                        <select name="status" class="form-select">
+                            <option value="1" selected="@(ViewBag.StatusValue == 1)">Открыт</option>
+                            <option value="2" selected="@(ViewBag.StatusValue == 2)">Закрыт</option>
+                            <option value="3" selected="@(ViewBag.StatusValue == 3)">В архиве</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ссылка</label>
+                        <input type="text" name="url" class="form-control" value="@ViewBag.UrlValue" />
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <a asp-action="Grants" class="btn btn-outline-secondary">Назад</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

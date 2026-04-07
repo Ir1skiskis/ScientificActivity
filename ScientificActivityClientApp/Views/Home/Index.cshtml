@@ -1,0 +1,32 @@
+﻿@{
+    ViewData["Title"] = "Главная";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Система сбора и аналитики научной активности</h1>
+    <p class="lead">Веб-приложение для сотрудников вуза</p>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success mt-4">
+        @TempData["Message"]
+    </div>
+}
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-body">
+                <h4>Возможности системы</h4>
+                <ul>
+                    <li>ведение профиля исследователя;</li>
+                    <li>хранение публикаций;</li>
+                    <li>работа с журналами, конференциями и грантами;</li>
+                    <li>учёт научных интересов;</li>
+                    <li>подготовка данных для аналитики и рекомендаций.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,81 @@
+﻿@{
+    ViewData["Title"] = "Добавить конференцию";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-4">
+            <div class="card-header text-center"><h4>Добавить конференцию</h4></div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.Error</div>
+                }
+
+                <form method="post" asp-action="CreateConference">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="title" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" name="startDate" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" name="endDate" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Город</label>
+                        <input type="text" name="city" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Страна</label>
+                        <input type="text" name="country" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Организатор</label>
+                        <input type="text" name="organizer" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тематика</label>
+                        <input type="text" name="subjectArea" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Формат</label>
+                        <select name="format" class="form-select">
+                            <option value="0">Не указан</option>
+                            <option value="1">Очная</option>
+                            <option value="2">Онлайн</option>
+                            <option value="3">Смешанная</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Уровень</label>
+                        <select name="level" class="form-select">
+                            <option value="0">Не указан</option>
+                            <option value="1">Вузовская</option>
+                            <option value="2">Региональная</option>
+                            <option value="3">Всероссийская</option>
+                            <option value="4">Международная</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ссылка</label>
+                        <input type="text" name="url" class="form-control" />
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Сохранить</button>
+                        <a asp-action="Conferences" class="btn btn-outline-secondary">Назад</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

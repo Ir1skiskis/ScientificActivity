@@ -1,0 +1,134 @@
+﻿@model List<GrantViewModel>
+@using ScientificActivityDataModels.Enums
+
+@{
+    ViewData["Title"] = "Гранты";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalCount = ViewBag.TotalCount ?? 0;
+    int? selectedStatus = ViewBag.SelectedStatus as int?;
+}
+
+<h2 class="mb-4">Гранты</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (APIClient.Researcher?.Role == UserRole.Администратор)
+{
+    <div class="mb-3 d-flex gap-2">
+        <a asp-action="CreateGrant" class="btn btn-primary">Добавить грант</a>
+
+        <form method="post" asp-action="ImportGrants">
+            <button type="submit" class="btn btn-success">Импортировать гранты</button>
+        </form>
+    </div>
+}
+
+<form method="get" asp-action="Grants" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <select name="status" class="form-select">
+            <option value="">Все статусы</option>
+            <option value="1" selected="@(selectedStatus == 1)">Открыт</option>
+            <option value="4" selected="@(selectedStatus == 4)">В экспертизе</option>
+            <option value="5" selected="@(selectedStatus == 5)">Завершен</option>
+            <option value="2" selected="@(selectedStatus == 2)">Закрыт</option>
+            <option value="3" selected="@(selectedStatus == 3)">В архиве</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">Фильтр</button>
+    </div>
+    <div class="col-md-2">
+        <a asp-action="Grants" class="btn btn-outline-secondary w-100">Сбросить</a>
+    </div>
+</form>
+
+<p>Всего записей: <strong>@totalCount</strong></p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">Гранты не найдены.</div>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>№ конкурса</th>
+                <th>Название</th>
+                <th>Организация</th>
+                <th>Прием заявок до</th>
+                <th>Дата проведения итогов</th>
+                <th>Статус</th>
+                <th>Документ</th>
+                @if (APIClient.Researcher?.Role == UserRole.Администратор)
+                {
+                    <th>Действия</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.ContestNumber</td>
+                    <td>@item.Title</td>
+                    <td>@item.Organization</td>
+                    <td>@item.StartDate.ToString("dd.MM.yyyy")</td>
+                    <td>@item.EndDate.ToString("dd.MM.yyyy")</td>
+                    <td>@item.Status</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(item.Url))
+                        {
+                            <a href="@item.Url" target="_blank">Извещение</a>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    @if (APIClient.Researcher?.Role == UserRole.Администратор)
+                    {
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a asp-action="UpdateGrant" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Изменить</a>
+                                <form method="post" asp-action="DeleteGrant">
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                                </form>
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <nav aria-label="Пагинация грантов">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Grants" asp-route-page="@(currentPage - 1)" asp-route-status="@selectedStatus">Назад</a>
+            </li>
+
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a class="page-link" asp-action="Grants" asp-route-page="@i" asp-route-status="@selectedStatus">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Grants" asp-route-page="@(currentPage + 1)" asp-route-status="@selectedStatus">Вперёд</a>
+            </li>
+        </ul>
+    </nav>
+}

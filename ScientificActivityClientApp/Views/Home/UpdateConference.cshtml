@@ -1,0 +1,83 @@
+﻿@{
+    ViewData["Title"] = "Редактировать конференцию";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-4">
+            <div class="card-header text-center"><h4>Редактировать конференцию</h4></div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.Error</div>
+                }
+
+                <form method="post" asp-action="UpdateConference">
+                    <input type="hidden" name="id" value="@ViewBag.ConferenceId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="title" class="form-control" value="@ViewBag.TitleValue" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control">@ViewBag.DescriptionValue</textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" name="startDate" class="form-control" value="@ViewBag.StartDateValue" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" name="endDate" class="form-control" value="@ViewBag.EndDateValue" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Город</label>
+                        <input type="text" name="city" class="form-control" value="@ViewBag.CityValue" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Страна</label>
+                        <input type="text" name="country" class="form-control" value="@ViewBag.CountryValue" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Организатор</label>
+                        <input type="text" name="organizer" class="form-control" value="@ViewBag.OrganizerValue" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тематика</label>
+                        <input type="text" name="subjectArea" class="form-control" value="@ViewBag.SubjectAreaValue" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Формат</label>
+                        <select name="format" class="form-select">
+                            <option value="0" selected="@(ViewBag.FormatValue == 0)">Не указан</option>
+                            <option value="1" selected="@(ViewBag.FormatValue == 1)">Очная</option>
+                            <option value="2" selected="@(ViewBag.FormatValue == 2)">Онлайн</option>
+                            <option value="3" selected="@(ViewBag.FormatValue == 3)">Смешанная</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Уровень</label>
+                        <select name="level" class="form-select">
+                            <option value="0" selected="@(ViewBag.LevelValue == 0)">Не указан</option>
+                            <option value="1" selected="@(ViewBag.LevelValue == 1)">Вузовская</option>
+                            <option value="2" selected="@(ViewBag.LevelValue == 2)">Региональная</option>
+                            <option value="3" selected="@(ViewBag.LevelValue == 3)">Всероссийская</option>
+                            <option value="4" selected="@(ViewBag.LevelValue == 4)">Международная</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ссылка</label>
+                        <input type="text" name="url" class="form-control" value="@ViewBag.UrlValue" />
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <a asp-action="Conferences" class="btn btn-outline-secondary">Назад</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

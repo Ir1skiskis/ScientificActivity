@@ -1,0 +1,113 @@
+﻿@model List<ConferenceViewModel>
+@using ScientificActivityDataModels.Enums
+
+@{
+    ViewData["Title"] = "Конференции";
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalCount = ViewBag.TotalCount ?? 0;
+}
+
+<h2 class="mb-4">Конференции</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (APIClient.Researcher?.Role == UserRole.Администратор)
+{
+    <div class="mb-3 d-flex gap-2">
+        <a asp-action="CreateConference" class="btn btn-primary">Добавить конференцию</a>
+
+        <form method="post" asp-action="ImportConferences">
+            <button type="submit" class="btn btn-success">Импортировать конференции</button>
+        </form>
+    </div>
+}
+
+<p>Всего записей: <strong>@totalCount</strong></p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">Конференции пока не загружены.</div>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Дата начала</th>
+                <th>Дата окончания</th>
+                <th>Город</th>
+                <th>Страна</th>
+                <th>Организатор</th>
+                <th>Ссылка</th>
+                @if (APIClient.Researcher?.Role == UserRole.Администратор)
+                {
+                    <th>Действия</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Title</td>
+                    <td>@item.StartDate.ToString("dd.MM.yyyy")</td>
+                    <td>@item.EndDate.ToString("dd.MM.yyyy")</td>
+                    <td>@item.City</td>
+                    <td>@item.Country</td>
+                    <td>@item.Organizer</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(item.Url))
+                        {
+                            <a href="@item.Url" target="_blank">Открыть</a>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    @if (APIClient.Researcher?.Role == UserRole.Администратор)
+                    {
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a asp-action="UpdateConference" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Изменить</a>
+                                <form method="post" asp-action="DeleteConference">
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                                </form>
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <nav aria-label="Пагинация конференций">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Conferences" asp-route-page="@(currentPage - 1)">Назад</a>
+            </li>
+
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a class="page-link" asp-action="Conferences" asp-route-page="@i">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Conferences" asp-route-page="@(currentPage + 1)">Вперёд</a>
+            </li>
+        </ul>
+    </nav>
+}

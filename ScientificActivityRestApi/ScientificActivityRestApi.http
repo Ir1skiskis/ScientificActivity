@@ -1,0 +1,6 @@
+@ScientificActivityRestApi_HostAddress = http://localhost:5082
+
+GET {{ScientificActivityRestApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

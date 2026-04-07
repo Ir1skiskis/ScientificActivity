@@ -1,0 +1,114 @@
+﻿@using ScientificActivityDataModels.Enums
+@{
+    ViewData["Title"] = "Добавление публикации";
+    var journals = ViewBag.Journals as List<JournalViewModel> ?? new List<JournalViewModel>();
+    var conferences = ViewBag.Conferences as List<ConferenceViewModel> ?? new List<ConferenceViewModel>();
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card mt-4">
+            <div class="card-header text-center">
+                <h4>Добавить публикацию</h4>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.Error</div>
+                }
+
+                <form method="post" asp-action="CreatePublication">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="title" class="form-control" value="@ViewBag.TitleValue" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Авторы</label>
+                        <input type="text" name="authors" class="form-control" value="@ViewBag.AuthorsValue" required />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Год</label>
+                            <input type="number" name="year" class="form-control" value="@(ViewBag.YearValue ?? DateTime.Now.Year)" required />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата публикации</label>
+                            <input type="date" name="publicationDate" class="form-control" value="@ViewBag.PublicationDateValue" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Тип публикации</label>
+                            <select name="type" class="form-select">
+                                <option value="1" selected="@(ViewBag.TypeValue == 1)">Статья в журнале</option>
+                                <option value="2" selected="@(ViewBag.TypeValue == 2)">Статья в сборнике конференции</option>
+                                <option value="3" selected="@(ViewBag.TypeValue == 3)">Монография</option>
+                                <option value="4" selected="@(ViewBag.TypeValue == 4)">Учебное пособие</option>
+                                <option value="5" selected="@(ViewBag.TypeValue == 5)">Тезисы доклада</option>
+                                <option value="6" selected="@(ViewBag.TypeValue == 6)">Патент</option>
+                                <option value="7" selected="@(ViewBag.TypeValue == 7)">Иное</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">DOI</label>
+                            <input type="text" name="doi" class="form-control" value="@ViewBag.DoiValue" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ссылка</label>
+                            <input type="text" name="url" class="form-control" value="@ViewBag.UrlValue" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Журнал</label>
+                            <select name="journalId" class="form-select">
+                                <option value="">Не выбрано</option>
+                                @foreach (var journal in journals)
+                                {
+                                    <option value="@journal.Id" selected="@(ViewBag.JournalIdValue == journal.Id)">
+                                        @journal.Title
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Конференция</label>
+                            <select name="conferenceId" class="form-select">
+                                <option value="">Не выбрано</option>
+                                @foreach (var conference in conferences)
+                                {
+                                    <option value="@conference.Id" selected="@(ViewBag.ConferenceIdValue == conference.Id)">
+                                        @conference.Title
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ключевые слова</label>
+                        <input type="text" name="keywords" class="form-control" value="@ViewBag.KeywordsValue" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Аннотация</label>
+                        <textarea name="annotation" class="form-control" rows="4">@ViewBag.AnnotationValue</textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Сохранить</button>
+                        <a asp-action="Publications" class="btn btn-outline-secondary">Назад</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

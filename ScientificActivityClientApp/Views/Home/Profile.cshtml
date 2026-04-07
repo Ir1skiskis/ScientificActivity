@@ -1,0 +1,108 @@
+﻿@model ResearcherViewModel
+@using ScientificActivityDataModels.Enums
+
+@{
+    ViewData["Title"] = "Профиль";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-4">
+            <div class="card-header text-center">
+                <h4>Профиль исследователя</h4>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">
+                        @ViewBag.Error
+                    </div>
+                }
+
+                @if (ViewBag.Message != null)
+                {
+                    <div class="alert alert-success">
+                        @ViewBag.Message
+                    </div>
+                }
+
+                <form method="post" asp-action="Profile">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Фамилия</label>
+                            <input type="text" name="lastName" class="form-control" value="@Model.LastName" required />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Имя</label>
+                            <input type="text" name="firstName" class="form-control" value="@Model.FirstName" required />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Отчество</label>
+                            <input type="text" name="middleName" class="form-control" value="@Model.MiddleName" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="@Model.Email" required />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" name="phone" class="form-control" value="@Model.Phone" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Кафедра / подразделение</label>
+                            <input type="text" name="department" class="form-control" value="@Model.Department" required />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Должность</label>
+                            <input type="text" name="position" class="form-control" value="@Model.Position" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Учёная степень</label>
+                        <select name="academicDegree" class="form-select">
+                            <option value="0" selected="@(Model.AcademicDegree == AcademicDegree.Не_указано)">Не указано</option>
+                            <option value="1" selected="@(Model.AcademicDegree == AcademicDegree.Без_степени)">Без степени</option>
+                            <option value="2" selected="@(Model.AcademicDegree == AcademicDegree.Кандидат_наук)">Кандидат наук</option>
+                            <option value="3" selected="@(Model.AcademicDegree == AcademicDegree.Доктор_наук)">Доктор наук</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ID автора eLibrary</label>
+                        <input type="text" name="eLibraryAuthorId" class="form-control" value="@Model.ELibraryAuthorId" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Научные интересы</label>
+                        <textarea name="researchTopics" class="form-control" rows="3">@Model.ResearchTopics</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Новый пароль</label>
+                        <input type="password" name="newPassword" class="form-control" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Количество публикаций</label>
+                        <input type="text" class="form-control" value="@Model.PublicationsCount" readonly />
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

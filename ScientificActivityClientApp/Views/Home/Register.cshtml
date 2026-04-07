@@ -1,0 +1,96 @@
+﻿@using ScientificActivityDataModels.Enums
+
+@{
+    ViewData["Title"] = "Регистрация";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-4">
+            <div class="card-header text-center">
+                <h4>Регистрация исследователя</h4>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger">
+                        @ViewBag.Error
+                    </div>
+                }
+
+                <form method="post" asp-action="Register">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Фамилия</label>
+                            <input type="text" name="lastName" class="form-control" value="@ViewBag.LastName" required />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Имя</label>
+                            <input type="text" name="firstName" class="form-control" value="@ViewBag.FirstName" required />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Отчество</label>
+                            <input type="text" name="middleName" class="form-control" value="@ViewBag.MiddleName" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="@ViewBag.Email" required />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" name="phone" class="form-control" value="@ViewBag.Phone" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Пароль</label>
+                        <input type="password" name="password" class="form-control" required />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Кафедра / подразделение</label>
+                            <input type="text" name="department" class="form-control" value="@ViewBag.Department" required />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Должность</label>
+                            <input type="text" name="position" class="form-control" value="@ViewBag.Position" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Учёная степень</label>
+                        <select name="academicDegree" class="form-select">
+                            <option value="0" selected="@(ViewBag.AcademicDegree == 0)">Не указано</option>
+                            <option value="1" selected="@(ViewBag.AcademicDegree == 1)">Без степени</option>
+                            <option value="2" selected="@(ViewBag.AcademicDegree == 2)">Кандидат наук</option>
+                            <option value="3" selected="@(ViewBag.AcademicDegree == 3)">Доктор наук</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ID автора eLibrary</label>
+                        <input type="text" name="eLibraryAuthorId" class="form-control" value="@ViewBag.ELibraryAuthorId" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Научные интересы</label>
+                        <textarea name="researchTopics" class="form-control" rows="3">@ViewBag.ResearchTopics</textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Зарегистрироваться</button>
+                        <a asp-action="Enter" class="btn btn-outline-secondary">Уже есть аккаунт? Войти</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
