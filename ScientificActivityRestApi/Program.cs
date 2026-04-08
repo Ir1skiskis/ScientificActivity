@@ -44,6 +44,18 @@ builder.Services.AddHttpClient<IConferenceParser, NaKonferenciiConferenceParser>
     client.DefaultRequestHeaders.Add("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
     client.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
 });
+
+builder.Services.AddTransient<IELibraryLogic, ELibraryLogic>();
+
+builder.Services.AddHttpClient<IELibraryParser, ELibraryParser>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Clear();
+    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+    client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    client.DefaultRequestHeaders.Add("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+});
+
 builder.Services.AddScoped<IImportService, ImportService>();
 
 builder.Services.AddDistributedMemoryCache();

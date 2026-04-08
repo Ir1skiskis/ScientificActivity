@@ -1,5 +1,6 @@
 ﻿@model ResearcherViewModel
 @using ScientificActivityDataModels.Enums
+@using ScientificActivityContracts.ViewModels
 
 @{
     ViewData["Title"] = "Профиль";
@@ -102,6 +103,367 @@
                         <button type="submit" class="btn btn-primary">Сохранить изменения</button>
                     </div>
                 </form>
+
+                @{
+                    var eLibraryProfile = ViewBag.ELibraryProfile as ELibraryAuthorProfileViewModel;
+                }
+
+                <hr class="my-4" />
+
+                <h5 class="mb-3">Профиль eLibrary</h5>
+
+                <form method="post" asp-action="LoadELibraryProfile" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-8 mb-2">
+                            <label class="form-label">AuthorId eLibrary</label>
+                            <input type="text" name="authorId" class="form-control" value="@Model.ELibraryAuthorId" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end mb-2">
+                            <button type="submit" class="btn btn-outline-primary w-100">Загрузить профиль</button>
+                        </div>
+                    </div>
+                </form>
+
+                <form method="post" asp-action="BindELibraryAuthor" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-8 mb-2">
+                            <label class="form-label">Привязать AuthorId</label>
+                            <input type="text" name="authorId" class="form-control" value="@Model.ELibraryAuthorId" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end mb-2">
+                            <button type="submit" class="btn btn-success w-100">Привязать</button>
+                        </div>
+                    </div>
+                </form>
+
+                <form method="post" asp-action="ImportELibraryProfile" class="mb-4">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning">Импортировать профиль в систему</button>
+                    </div>
+                </form>
+
+                @if (eLibraryProfile != null)
+                {
+                    <div class="card border-secondary">
+                        <div class="card-header">
+                            Данные автора из eLibrary
+                        </div>
+                        <div class="card-body">
+                            <h6 class="mb-3">Основная информация</h6>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>ФИО:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.FullName) ? eLibraryProfile.FullName : "Не указано")</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>AuthorId:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.AuthorId) ? eLibraryProfile.AuthorId : "Не указано")</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Организация:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.Organization) ? eLibraryProfile.Organization : "Не указано")</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Кафедра:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.Department) ? eLibraryProfile.Department : "Не указано")</div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-4"><strong>SPIN-код:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.SpinCode) ? eLibraryProfile.SpinCode : "Не указано")</div>
+                            </div>
+
+                            <h6 class="mb-3">Общие показатели</h6>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Показатель</th>
+                                            <th>Значение</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Число публикаций на eLibrary</td>
+                                            <td>@(eLibraryProfile.PublicationsCountElibrary?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число публикаций в РИНЦ</td>
+                                            <td>@(eLibraryProfile.PublicationsCountRinc?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число публикаций в ядре РИНЦ</td>
+                                            <td>@(eLibraryProfile.PublicationsCoreRincCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число цитирований на eLibrary</td>
+                                            <td>@(eLibraryProfile.CitationsCountElibrary?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число цитирований в РИНЦ</td>
+                                            <td>@(eLibraryProfile.CitationsCountRinc?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число цитирований в ядре РИНЦ</td>
+                                            <td>@(eLibraryProfile.CitationsCoreRincCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Индекс Хирша по всем публикациям</td>
+                                            <td>@(eLibraryProfile.HIndexElibrary?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Индекс Хирша по РИНЦ</td>
+                                            <td>@(eLibraryProfile.HIndexRinc?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Индекс Хирша по ядру РИНЦ</td>
+                                            <td>@(eLibraryProfile.HIndexCoreRinc?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Индекс Хирша без самоцитирований</td>
+                                            <td>@(eLibraryProfile.HIndexWithoutSelfCitations?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Год первой публикации</td>
+                                            <td>@(eLibraryProfile.FirstPublicationYear?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Процентиль по ядру РИНЦ</td>
+                                            <td>@(eLibraryProfile.PercentileCoreRinc?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-3">Дополнительные показатели</h6>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Показатель</th>
+                                            <th>Значение</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Публикаций, процитировавших работы автора</td>
+                                            <td>@(eLibraryProfile.PublicationsCitingAuthorCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Ссылок на самую цитируемую публикацию</td>
+                                            <td>@(eLibraryProfile.MostCitedPublicationCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Публикаций автора, процитированных хотя бы один раз</td>
+                                            <td>@(eLibraryProfile.CitedPublicationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Среднее число цитирований на одну публикацию</td>
+                                            <td>@(eLibraryProfile.AverageCitationsPerPublication?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число самоцитирований</td>
+                                            <td>@(eLibraryProfile.SelfCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число цитирований соавторами</td>
+                                            <td>@(eLibraryProfile.CoauthorCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Число соавторов</td>
+                                            <td>@(eLibraryProfile.CoauthorsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-3">Публикации и цитирования по типам</h6>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Показатель</th>
+                                            <th>Значение</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Статьи в зарубежных журналах</td>
+                                            <td>@(eLibraryProfile.ForeignArticlesCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Статьи в российских журналах</td>
+                                            <td>@(eLibraryProfile.RussianArticlesCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Статьи в журналах ВАК</td>
+                                            <td>@(eLibraryProfile.VakArticlesCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Статьи в журналах с ненулевым импакт-фактором</td>
+                                            <td>@(eLibraryProfile.ImpactFactorArticlesCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Цитирования из зарубежных журналов</td>
+                                            <td>@(eLibraryProfile.ForeignJournalCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Цитирования из российских журналов</td>
+                                            <td>@(eLibraryProfile.RussianJournalCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Цитирования из журналов ВАК</td>
+                                            <td>@(eLibraryProfile.VakJournalCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Цитирования из журналов с ненулевым импакт-фактором</td>
+                                            <td>@(eLibraryProfile.ImpactFactorJournalCitationsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-3">Показатели за последние 5 лет</h6>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Показатель</th>
+                                            <th>Значение</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Публикации в РИНЦ за 5 лет</td>
+                                            <td>@(eLibraryProfile.PublicationsRincLast5YearsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Публикации в ядре РИНЦ за 5 лет</td>
+                                            <td>@(eLibraryProfile.PublicationsCoreRincLast5YearsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Цитирования в РИНЦ за 5 лет</td>
+                                            <td>@(eLibraryProfile.CitationsRincLast5YearsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Цитирования в ядре РИНЦ за 5 лет</td>
+                                            <td>@(eLibraryProfile.CitationsCoreRincLast5YearsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Все ссылки на работы автора за 5 лет</td>
+                                            <td>@(eLibraryProfile.CitationsAllLast5YearsCount?.ToString() ?? "Не указано")</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-3">Рубрики</h6>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Основная рубрика ГРНТИ:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.MainRubricGrnti) ? eLibraryProfile.MainRubricGrnti : "Не указано")</div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-4"><strong>Основная рубрика OECD:</strong></div>
+                                <div class="col-md-8">@(!string.IsNullOrWhiteSpace(eLibraryProfile.MainRubricOecd) ? eLibraryProfile.MainRubricOecd : "Не указано")</div>
+                            </div>
+                            <h6 class="mb-3">Показатели за 5 лет</h6>
+
+                            @if (eLibraryProfile.PublicationsRinc5YearsByEndYear != null && eLibraryProfile.PublicationsRinc5YearsByEndYear.Any())
+                            {
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Период</th>
+                                                <th>Публикации в РИНЦ за 5 лет</th>
+                                                <th>Публикации в ядре РИНЦ за 5 лет</th>
+                                                <th>Цитирования в РИНЦ за 5 лет</th>
+                                                <th>Цитирования в ядре РИНЦ за 5 лет</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var endYear in eLibraryProfile.PublicationsRinc5YearsByEndYear.Keys.OrderByDescending(x => x))
+                                            {
+                                                var startYear = endYear - 4;
+
+                                                <tr>
+                                                    <td>@startYear-@endYear</td>
+                                                    <td>@(eLibraryProfile.PublicationsRinc5YearsByEndYear.ContainsKey(endYear) ? eLibraryProfile.PublicationsRinc5YearsByEndYear[endYear] : 0)</td>
+                                                    <td>@(eLibraryProfile.PublicationsCoreRinc5YearsByEndYear.ContainsKey(endYear) ? eLibraryProfile.PublicationsCoreRinc5YearsByEndYear[endYear] : 0)</td>
+                                                    <td>@(eLibraryProfile.CitationsRinc5YearsByEndYear.ContainsKey(endYear) ? eLibraryProfile.CitationsRinc5YearsByEndYear[endYear] : 0)</td>
+                                                    <td>@(eLibraryProfile.CitationsCoreRinc5YearsByEndYear.ContainsKey(endYear) ? eLibraryProfile.CitationsCoreRinc5YearsByEndYear[endYear] : 0)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-light border">
+                                    Пятилетние показатели не найдены.
+                                </div>
+                            }
+                            <h6 class="mb-3">Годовые показатели</h6>
+
+                            @if (eLibraryProfile.PublicationsRincByYear != null && eLibraryProfile.PublicationsRincByYear.Any())
+                            {
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Год</th>
+                                                <th>Публикации в РИНЦ</th>
+                                                <th>Публикации в ядре РИНЦ</th>
+                                                <th>Цитирования в РИНЦ</th>
+                                                <th>Цитирования в ядре РИНЦ</th>
+                                                <th>H-index РИНЦ</th>
+                                                <th>H-index ядра</th>
+                                                <th>Процентиль ядра</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var year in eLibraryProfile.PublicationsRincByYear.Keys.OrderByDescending(x => x))
+                                            {
+                                                <tr>
+                                                    <td>@year</td>
+                                                    <td>@(eLibraryProfile.PublicationsRincByYear.ContainsKey(year) ? eLibraryProfile.PublicationsRincByYear[year] : 0)</td>
+                                                    <td>@(eLibraryProfile.PublicationsCoreRincByYear.ContainsKey(year) ? eLibraryProfile.PublicationsCoreRincByYear[year] : 0)</td>
+                                                    <td>@(eLibraryProfile.CitationsRincByYear.ContainsKey(year) ? eLibraryProfile.CitationsRincByYear[year] : 0)</td>
+                                                    <td>@(eLibraryProfile.CitationsCoreRincByYear.ContainsKey(year) ? eLibraryProfile.CitationsCoreRincByYear[year] : 0)</td>
+                                                    <td>@(eLibraryProfile.HIndexRincByYear.ContainsKey(year) ? eLibraryProfile.HIndexRincByYear[year] : 0)</td>
+                                                    <td>@(eLibraryProfile.HIndexCoreRincByYear.ContainsKey(year) ? eLibraryProfile.HIndexCoreRincByYear[year] : 0)</td>
+                                                    <td>@(eLibraryProfile.PercentileCoreRincByYear.ContainsKey(year) ? eLibraryProfile.PercentileCoreRincByYear[year] : 0)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-light border">
+                                    Годовые показатели не найдены.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-light border">
+                        Данные eLibrary пока не загружены.
+                    </div>
+                }
             </div>
         </div>
     </div>

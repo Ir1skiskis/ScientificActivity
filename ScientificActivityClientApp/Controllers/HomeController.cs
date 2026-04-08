@@ -182,6 +182,28 @@ namespace ScientificActivityClientApp.Controllers
 
         // -------------------- Профиль --------------------
 
+        private void FillELibraryProfileViewBag(string? authorId)
+        {
+            ViewBag.ELibraryProfile = null;
+
+            if (string.IsNullOrWhiteSpace(authorId))
+            {
+                return;
+            }
+
+            try
+            {
+                var profile = APIClient.GetRequest<ELibraryAuthorProfileViewModel>(
+                    $"api/ELibrary/GetAuthorProfile?authorId={authorId}");
+
+                ViewBag.ELibraryProfile = profile;
+            }
+            catch
+            {
+                ViewBag.ELibraryProfile = null;
+            }
+        }
+
         public IActionResult Profile()
         {
             if (APIClient.Researcher == null)
@@ -190,6 +212,8 @@ namespace ScientificActivityClientApp.Controllers
             }
 
             UpdateResearcherProfile();
+            FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+
             return View(APIClient.Researcher);
         }
 
@@ -257,13 +281,125 @@ namespace ScientificActivityClientApp.Controllers
                 APIClient.Researcher.ResearchTopics = researchTopics;
 
                 ViewBag.Message = "Профиль успешно обновлён";
+                FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
                 return View(APIClient.Researcher);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка обновления профиля");
                 ViewBag.Error = ex.Message;
+                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
                 return View(APIClient.Researcher);
+            }
+        }
+
+        [HttpPost]
+        public IActionResult BindELibraryAuthor(string authorId)
+        {
+            try
+            {
+                if (APIClient.Researcher == null)
+                {
+                    return RedirectToAction("Enter");
+                }
+
+                if (string.IsNullOrWhiteSpace(authorId))
+                {
+                    ViewBag.Error = "Укажите AuthorId eLibrary";
+                    FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+                    return View("Profile", APIClient.Researcher);
+                }
+
+                APIClient.PostRequest("api/ELibrary/BindAuthorToResearcher", new ELibraryBindAuthorBindingModel
+                {
+                    ResearcherId = APIClient.Researcher.Id,
+                    AuthorId = authorId.Trim()
+                });
+
+                APIClient.Researcher.ELibraryAuthorId = authorId.Trim();
+
+                FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+                ViewBag.Message = "AuthorId eLibrary успешно привязан";
+
+                return View("Profile", APIClient.Researcher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка привязки AuthorId eLibrary");
+                ViewBag.Error = ex.Message;
+                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                return View("Profile", APIClient.Researcher);
+            }
+        }
+
+        [HttpPost]
+        public IActionResult LoadELibraryProfile(string authorId)
+        {
+            try
+            {
+                if (APIClient.Researcher == null)
+                {
+                    return RedirectToAction("Enter");
+                }
+
+                var actualAuthorId = string.IsNullOrWhiteSpace(authorId)
+                    ? APIClient.Researcher.ELibraryAuthorId
+                    : authorId.Trim();
+
+                if (string.IsNullOrWhiteSpace(actualAuthorId))
+                {
+                    ViewBag.Error = "Укажите AuthorId eLibrary";
+                    return View("Profile", APIClient.Researcher);
+                }
+
+                FillELibraryProfileViewBag(actualAuthorId);
+                ViewBag.Message = "Профиль eLibrary загружен";
+
+                return View("Profile", APIClient.Researcher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка загрузки профиля eLibrary");
+                ViewBag.Error = ex.Message;
+                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                return View("Profile", APIClient.Researcher);
+            }
+        }
+
+        [HttpPost]
+        public IActionResult ImportELibraryProfile()
+        {
+            try
+            {
+                if (APIClient.Researcher == null)
+                {
+                    return RedirectToAction("Enter");
+                }
+
+                if (string.IsNullOrWhiteSpace(APIClient.Researcher.ELibraryAuthorId))
+                {
+                    ViewBag.Error = "Сначала укажите и привяжите AuthorId eLibrary";
+                    return View("Profile", APIClient.Researcher);
+                }
+
+                APIClient.PostRequest("api/ELibrary/ImportAuthorProfile", new ELibraryImportBindingModel
+                {
+                    ResearcherId = APIClient.Researcher.Id
+                });
+
+                UpdateResearcherProfile();
+                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+
+                ViewBag.Message = "Данные из eLibrary импортированы в профиль";
+
+                return View("Profile", APIClient.Researcher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка импорта профиля eLibrary");
+                ViewBag.Error = ex.Message;
+                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                return View("Profile", APIClient.Researcher);
             }
         }
 
