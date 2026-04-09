@@ -19,7 +19,7 @@ namespace ScientificActivityContracts.ViewModels
         [DisplayName("ISSN")]
         public string? Issn { get; set; }
 
-        [DisplayName("E-ISSN")]
+        [DisplayName("EISSN")]
         public string? EIssn { get; set; }
 
         [DisplayName("Издатель")]
@@ -28,19 +28,37 @@ namespace ScientificActivityContracts.ViewModels
         [DisplayName("Тематика")]
         public string? SubjectArea { get; set; }
 
-        [DisplayName("Квартиль")]
-        public JournalQuartile Quartile { get; set; }
-
-        [DisplayName("Входит в ВАК")]
+        [DisplayName("ВАК")]
         public bool IsVak { get; set; }
 
-        [DisplayName("Входит в Белый список")]
+        [DisplayName("Белый список")]
         public bool IsWhiteList { get; set; }
+
+        [DisplayName("Уровень БС 2023")]
+        public int? WhiteListLevel2023 { get; set; }
+
+        [DisplayName("Уровень БС 2025")]
+        public int? WhiteListLevel2025 { get; set; }
+
+        [DisplayName("Статус БС")]
+        public string? WhiteListState { get; set; }
+
+        [DisplayName("Примечание БС")]
+        public string? WhiteListNotice { get; set; }
+
+        [DisplayName("Дата включения в БС")]
+        public DateTime? WhiteListAcceptedDate { get; set; }
+
+        [DisplayName("Дата исключения из БС")]
+        public DateTime? WhiteListDiscontinuedDate { get; set; }
 
         [DisplayName("Страна")]
         public string? Country { get; set; }
 
         [DisplayName("Ссылка")]
         public string? Url { get; set; }
+
+        [DisplayName("ID РЦНИ")]
+        public int? RcsiRecordSourceId { get; set; }
     }
 }

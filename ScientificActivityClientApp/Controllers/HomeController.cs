@@ -6,6 +6,7 @@ using ScientificActivityDataModels.Enums;
 using ScientificActivityParsers.Interfaces;
 using System.Diagnostics;
 using System.Net.Http.Headers;
+using System.Threading;
 
 namespace ScientificActivityClientApp.Controllers
 {
@@ -509,7 +510,7 @@ namespace ScientificActivityClientApp.Controllers
 
         [HttpPost]
         public IActionResult CreateJournal(string title, string? issn, string? eIssn, string? publisher,
-            string? subjectArea, int quartile, bool isVak, bool isWhiteList, string? country, string? url)
+            string? subjectArea, bool isVak, bool isWhiteList, string? country, string? url)
         {
             try
             {
@@ -525,9 +526,14 @@ namespace ScientificActivityClientApp.Controllers
                     EIssn = eIssn,
                     Publisher = publisher,
                     SubjectArea = subjectArea,
-                    Quartile = (JournalQuartile)quartile,
                     IsVak = isVak,
                     IsWhiteList = isWhiteList,
+                    WhiteListLevel2023 = null,
+                    WhiteListLevel2025 = null,
+                    WhiteListState = null,
+                    WhiteListNotice = null,
+                    WhiteListAcceptedDate = null,
+                    WhiteListDiscontinuedDate = null,
                     Country = country,
                     Url = url
                 });
@@ -566,9 +572,14 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.EIssnValue = journal.EIssn;
                 ViewBag.PublisherValue = journal.Publisher;
                 ViewBag.SubjectAreaValue = journal.SubjectArea;
-                ViewBag.QuartileValue = (int)journal.Quartile;
                 ViewBag.IsVakValue = journal.IsVak;
                 ViewBag.IsWhiteListValue = journal.IsWhiteList;
+                ViewBag.WhiteListLevel2023Value = journal.WhiteListLevel2023;
+                ViewBag.WhiteListLevel2025Value = journal.WhiteListLevel2025;
+                ViewBag.WhiteListStateValue = journal.WhiteListState;
+                ViewBag.WhiteListNoticeValue = journal.WhiteListNotice;
+                ViewBag.WhiteListAcceptedDateValue = journal.WhiteListAcceptedDate;
+                ViewBag.WhiteListDiscontinuedDateValue = journal.WhiteListDiscontinuedDate;
                 ViewBag.CountryValue = journal.Country;
                 ViewBag.UrlValue = journal.Url;
 
@@ -584,7 +595,9 @@ namespace ScientificActivityClientApp.Controllers
 
         [HttpPost]
         public IActionResult UpdateJournal(int id, string title, string? issn, string? eIssn, string? publisher,
-            string? subjectArea, int quartile, bool isVak, bool isWhiteList, string? country, string? url)
+            string? subjectArea, bool isVak, bool isWhiteList, int? whiteListLevel2023, int? whiteListLevel2025,
+            string? whiteListState, string? whiteListNotice, DateTime? whiteListAcceptedDate, 
+            DateTime? whiteListDiscontinuedDate, string? country, string? url)
         {
             try
             {
@@ -601,9 +614,14 @@ namespace ScientificActivityClientApp.Controllers
                     EIssn = eIssn,
                     Publisher = publisher,
                     SubjectArea = subjectArea,
-                    Quartile = (JournalQuartile)quartile,
                     IsVak = isVak,
                     IsWhiteList = isWhiteList,
+                    WhiteListLevel2023 = whiteListLevel2023,
+                    WhiteListLevel2025 = whiteListLevel2025,
+                    WhiteListState = whiteListState,
+                    WhiteListNotice = whiteListNotice,
+                    WhiteListAcceptedDate = whiteListAcceptedDate,
+                    WhiteListDiscontinuedDate = whiteListDiscontinuedDate,
                     Country = country,
                     Url = url
                 });
@@ -621,9 +639,14 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.EIssnValue = eIssn;
                 ViewBag.PublisherValue = publisher;
                 ViewBag.SubjectAreaValue = subjectArea;
-                ViewBag.QuartileValue = quartile;
                 ViewBag.IsVakValue = isVak;
                 ViewBag.IsWhiteListValue = isWhiteList;
+                ViewBag.WhiteListLevel2023Value = whiteListLevel2023;
+                ViewBag.WhiteListLevel2025Value = whiteListLevel2025;
+                ViewBag.WhiteListStateValue = whiteListState;
+                ViewBag.WhiteListNoticeValue = whiteListNotice;
+                ViewBag.WhiteListAcceptedDateValue = whiteListAcceptedDate;
+                ViewBag.WhiteListDiscontinuedDateValue = whiteListDiscontinuedDate;
                 ViewBag.CountryValue = country;
                 ViewBag.UrlValue = url;
                 return View();
@@ -657,6 +680,77 @@ namespace ScientificActivityClientApp.Controllers
         }
 
         [HttpGet]
+        public IActionResult ImportAllJournals()
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Импорт доступен только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ImportAllJournals(IFormFile file)
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Импорт доступен только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                ViewBag.Error = "Выберите PDF-файл ВАК";
+                return View();
+            }
+
+            if (!Path.GetExtension(file.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                ViewBag.Error = "Можно загрузить только PDF-файл";
+                return View();
+            }
+
+            try
+            {
+                using var form = new MultipartFormDataContent();
+                await using var fileStream = file.OpenReadStream();
+                using var streamContent = new StreamContent(fileStream);
+
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+                form.Add(streamContent, "file", file.FileName);
+
+                var url = $"{APIClient.ApiAddress}/api/Import/ImportAllJournals";
+                using var httpClient = new HttpClient
+                {
+                    Timeout = Timeout.InfiniteTimeSpan
+                };
+
+                var response = await httpClient.PostAsync(url, form);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    ViewBag.Error = $"Ошибка API ({(int)response.StatusCode}): {responseText}";
+                    return View();
+                }
+
+                TempData["Message"] = string.IsNullOrWhiteSpace(responseText)
+                    ? "Импорт журналов успешно завершён"
+                    : responseText;
+
+                return RedirectToAction("Journals");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка общего импорта журналов");
+                ViewBag.Error = ex.ToString();
+                return View();
+            }
+        }
+
+        [HttpGet]
         public IActionResult ImportVakJournals()
         {
             if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
@@ -679,7 +773,7 @@ namespace ScientificActivityClientApp.Controllers
 
             if (file == null || file.Length == 0)
             {
-                ViewBag.Error = "Выберите PDF-файл";
+                ViewBag.Error = "Выберите PDF-файл ВАК";
                 return View();
             }
 
@@ -691,7 +785,6 @@ namespace ScientificActivityClientApp.Controllers
 
             try
             {
-                using var httpClient = new HttpClient();
                 using var form = new MultipartFormDataContent();
                 await using var fileStream = file.OpenReadStream();
                 using var streamContent = new StreamContent(fileStream);
@@ -700,11 +793,13 @@ namespace ScientificActivityClientApp.Controllers
                 form.Add(streamContent, "file", file.FileName);
 
                 var url = $"{APIClient.ApiAddress}/api/Import/ImportVakJournals";
+                using var httpClient = new HttpClient
+                {
+                    Timeout = Timeout.InfiniteTimeSpan
+                };
+
                 var response = await httpClient.PostAsync(url, form);
                 var responseText = await response.Content.ReadAsStringAsync();
-
-                _logger.LogInformation("ImportVakJournals response status: {StatusCode}", response.StatusCode);
-                _logger.LogInformation("ImportVakJournals response text: {ResponseText}", responseText);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -713,18 +808,140 @@ namespace ScientificActivityClientApp.Controllers
                 }
 
                 TempData["Message"] = string.IsNullOrWhiteSpace(responseText)
-                    ? "Импорт журналов ВАК успешно завершён"
+                    ? "Импорт ВАК успешно завершён"
                     : responseText;
 
                 return RedirectToAction("Journals");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при загрузке PDF-файла ВАК");
+                _logger.LogError(ex, "Ошибка импорта ВАК");
                 ViewBag.Error = ex.ToString();
                 return View();
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> ImportWhiteListJournals()
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Операция доступна только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            try
+            {
+                var url = $"{APIClient.ApiAddress}/api/Import/ImportWhiteListJournals";
+                using var httpClient = new HttpClient
+                {
+                    Timeout = Timeout.InfiniteTimeSpan
+                };
+
+                var response = await httpClient.PostAsync(url, null);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    TempData["Error"] = $"Ошибка API ({(int)response.StatusCode}): {responseText}";
+                    return RedirectToAction("Journals");
+                }
+
+                TempData["Message"] = string.IsNullOrWhiteSpace(responseText)
+                    ? "Импорт Белого списка успешно завершён"
+                    : responseText;
+
+                return RedirectToAction("Journals");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка импорта Белого списка");
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("Journals");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EnrichWhiteListRcsiLinks()
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Операция доступна только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            try
+            {
+                var url = $"{APIClient.ApiAddress}/api/Import/EnrichWhiteListRcsiLinks";
+                using var httpClient = new HttpClient
+                {
+                    Timeout = Timeout.InfiniteTimeSpan
+                };
+
+                var response = await httpClient.PostAsync(url, null);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    TempData["Error"] = $"Ошибка API ({(int)response.StatusCode}): {responseText}";
+                    return RedirectToAction("Journals");
+                }
+
+                TempData["Message"] = string.IsNullOrWhiteSpace(responseText)
+                    ? "RcsiRecordSourceId и Url успешно обновлены"
+                    : responseText;
+
+                return RedirectToAction("Journals");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка заполнения RcsiRecordSourceId и Url");
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("Journals");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EnrichWhiteListSubjectAreas()
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Операция доступна только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            try
+            {
+                var url = $"{APIClient.ApiAddress}/api/Import/EnrichWhiteListSubjectAreas";
+                using var httpClient = new HttpClient
+                {
+                    Timeout = Timeout.InfiniteTimeSpan
+                };
+
+                var response = await httpClient.PostAsync(url, null);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    TempData["Error"] = $"Ошибка API ({(int)response.StatusCode}): {responseText}";
+                    return RedirectToAction("Journals");
+                }
+
+                TempData["Message"] = string.IsNullOrWhiteSpace(responseText)
+                    ? "Тематики успешно обновлены"
+                    : responseText;
+
+                return RedirectToAction("Journals");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка заполнения тематик из РЦНИ");
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("Journals");
+            }
+        }
+
+
 
         // -------------------- Конференции -------------------------------
 

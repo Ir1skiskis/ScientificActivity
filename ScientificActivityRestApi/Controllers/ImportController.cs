@@ -60,16 +60,12 @@ namespace ScientificActivityRestApi.Controllers
 
             if (file == null || file.Length == 0)
             {
-                _logger.LogWarning("Файл не передан или пустой");
                 return BadRequest("Файл не выбран");
             }
-
-            _logger.LogInformation("Получен файл {FileName}, размер {Length}", file.FileName, file.Length);
 
             var extension = Path.GetExtension(file.FileName);
             if (!string.Equals(extension, ".pdf", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Передан не PDF-файл: {FileName}", file.FileName);
                 return BadRequest("Можно загружать только PDF-файл");
             }
 
@@ -81,24 +77,21 @@ namespace ScientificActivityRestApi.Controllers
 
             try
             {
-                _logger.LogInformation("Сохраняем временный файл: {TempFilePath}", tempFilePath);
-
                 await using (var stream = new FileStream(tempFilePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                _logger.LogInformation("Файл сохранён, запускаем ImportVakJournalsAsync");
-
                 var count = await _importService.ImportVakJournalsAsync(tempFilePath);
 
-                _logger.LogInformation("Импорт журналов ВАК завершён. Count={Count}", count);
-
-                return Ok($"Импорт журналов ВАК завершён. Обработано журналов: {count}");
+                return Ok(new
+                {
+                    Message = $"Импорт ВАК завершён. Обработано журналов: {count}"
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка импорта журналов ВАК");
+                _logger.LogError(ex, "Ошибка импорта ВАК");
                 return BadRequest(ex.ToString());
             }
             finally
@@ -108,12 +101,123 @@ namespace ScientificActivityRestApi.Controllers
                     if (System.IO.File.Exists(tempFilePath))
                     {
                         System.IO.File.Delete(tempFilePath);
-                        _logger.LogInformation("Временный файл удалён: {TempFilePath}", tempFilePath);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Не удалось удалить временный PDF-файл {TempFilePath}", tempFilePath);
+                    _logger.LogWarning(ex, "Не удалось удалить временный PDF-файл {Path}", tempFilePath);
+                }
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ImportWhiteListJournals()
+        {
+            try
+            {
+                var count = await _importService.ImportWhiteListJournalsAsync();
+                return Ok(new
+                {
+                    Message = $"Импорт Белого списка завершён. Обработано журналов: {count}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка импорта белого списка");
+                return BadRequest(ex.ToString());
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EnrichWhiteListRcsiLinks()
+        {
+            try
+            {
+                var count = await _importService.EnrichWhiteListRcsiLinksAsync();
+                return Ok(new
+                {
+                    Message = $"Заполнение RcsiRecordSourceId и Url завершено. Обновлено журналов: {count}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка заполнения RcsiRecordSourceId и Url");
+                return BadRequest(ex.ToString());
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EnrichWhiteListSubjectAreas()
+        {
+            try
+            {
+                var count = await _importService.EnrichWhiteListSubjectAreasAsync();
+                return Ok(new
+                {
+                    Message = $"Обогащение тематик завершено. Обновлено журналов: {count}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка обогащения тематик из РЦНИ");
+                return BadRequest(ex.ToString());
+            }
+        }
+
+        [HttpPost]
+        [RequestSizeLimit(200_000_000)]
+        public async Task<IActionResult> ImportAllJournals(IFormFile file)
+        {
+            _logger.LogInformation("Начало ImportAllJournals");
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("Файл не выбран");
+            }
+
+            var extension = Path.GetExtension(file.FileName);
+            if (!string.Equals(extension, ".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Можно загружать только PDF-файл");
+            }
+
+            string tempDirectory = Path.Combine(_environment.ContentRootPath, "TempImports");
+            Directory.CreateDirectory(tempDirectory);
+
+            string tempFileName = $"{Guid.NewGuid():N}{extension}";
+            string tempFilePath = Path.Combine(tempDirectory, tempFileName);
+
+            try
+            {
+                await using (var stream = new FileStream(tempFilePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var result = await _importService.ImportAllJournalsAsync(tempFilePath);
+
+                return Ok(new
+                {
+                    Message = $"Импорт завершён. ВАК: {result.VakCount}, Белый список: {result.WhiteListCount}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка общего импорта журналов");
+                return BadRequest(ex.ToString());
+            }
+            finally
+            {
+                try
+                {
+                    if (System.IO.File.Exists(tempFilePath))
+                    {
+                        System.IO.File.Delete(tempFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось удалить временный PDF-файл {Path}", tempFilePath);
                 }
             }
         }

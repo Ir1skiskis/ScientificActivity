@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ScientificActivityDatabaseImplement;
@@ -11,9 +12,11 @@ using ScientificActivityDatabaseImplement;
 namespace ScientificActivityDatabaseImplement.Migrations
 {
     [DbContext(typeof(ScientificActivityDatabase))]
-    partial class ScientificActivityDatabaseModelSnapshot : ModelSnapshot
+    [Migration("20260409145958_CheckMigration")]
+    partial class CheckMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -145,9 +148,6 @@ namespace ScientificActivityDatabaseImplement.Migrations
                     b.Property<string>("Publisher")
                         .HasColumnType("text");
 
-                    b.Property<int?>("RcsiRecordSourceId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("SubjectArea")
                         .HasColumnType("text");
 
@@ -177,10 +177,6 @@ namespace ScientificActivityDatabaseImplement.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Issn");
-
-                    b.HasIndex("RcsiRecordSourceId");
 
                     b.ToTable("Journals");
                 });

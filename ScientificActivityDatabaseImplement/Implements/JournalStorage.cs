@@ -45,10 +45,6 @@ namespace ScientificActivityDatabaseImplement.Implements
             {
                 query = query.Where(x => x.SubjectArea != null && x.SubjectArea.Contains(model.SubjectArea));
             }
-            if (model.Quartile.HasValue)
-            {
-                query = query.Where(x => x.Quartile == model.Quartile.Value);
-            }
             if (model.IsVak.HasValue)
             {
                 query = query.Where(x => x.IsVak == model.IsVak.Value);
@@ -74,9 +70,14 @@ namespace ScientificActivityDatabaseImplement.Implements
             {
                 element = context.Journals.FirstOrDefault(x => x.Id == model.Id.Value);
             }
+            else if (model.RcsiRecordSourceId.HasValue)
+            {
+                element = context.Journals.FirstOrDefault(x => x.RcsiRecordSourceId == model.RcsiRecordSourceId.Value);
+            }
             else if (!string.IsNullOrWhiteSpace(model.Issn))
             {
-                element = context.Journals.FirstOrDefault(x => x.Issn == model.Issn);
+                element = context.Journals.FirstOrDefault(x =>
+                    x.Issn == model.Issn || x.EIssn == model.Issn);
             }
             else if (!string.IsNullOrWhiteSpace(model.Title))
             {

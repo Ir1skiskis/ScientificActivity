@@ -1,13 +1,17 @@
 ﻿@{
-    ViewData["Title"] = "Импорт списка ВАК";
+    ViewData["Title"] = "Импорт ВАК";
 }
 
-<h2>Импорт списка ВАК</h2>
+<h2>Импорт журналов ВАК</h2>
 
 @if (ViewBag.Error != null)
 {
     <div class="alert alert-danger">@ViewBag.Error</div>
 }
+
+<div class="alert alert-info">
+    Здесь загружается только PDF перечня ВАК.
+</div>
 
 <div class="card shadow-sm">
     <div class="card-body">
@@ -17,7 +21,7 @@
                 <input type="file" name="file" accept=".pdf,application/pdf" class="form-control" />
             </div>
 
-            <button type="submit" class="btn btn-primary">Импортировать</button>
+            <button type="submit" class="btn btn-primary">Импортировать ВАК</button>
             <a asp-action="Journals" class="btn btn-secondary ms-2">Назад</a>
         </form>
     </div>

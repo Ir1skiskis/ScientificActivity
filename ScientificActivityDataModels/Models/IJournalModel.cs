@@ -15,12 +15,20 @@ namespace ScientificActivityDataModels.Models
         string? Publisher { get; }
 
         string? SubjectArea { get; }
-        JournalQuartile Quartile { get; }
+
+        int? WhiteListLevel2023 { get; }
+        int? WhiteListLevel2025 { get; }
+        string? WhiteListState { get; }
+        string? WhiteListNotice { get; }
+        DateTime? WhiteListAcceptedDate { get; }
+        DateTime? WhiteListDiscontinuedDate { get; }
 
         bool IsVak { get; }
         bool IsWhiteList { get; }
 
         string? Country { get; }
         string? Url { get; }
+
+        int? RcsiRecordSourceId { get; }
     }
 }

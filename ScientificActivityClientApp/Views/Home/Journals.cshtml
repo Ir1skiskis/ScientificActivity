@@ -19,15 +19,35 @@
 
 @if (APIClient.Researcher?.Role == UserRole.Администратор)
 {
-    <div class="mb-3 d-flex gap-2">
+    <div class="mb-3 d-flex gap-2 flex-wrap">
         <a asp-action="CreateJournal" class="btn btn-primary">Добавить журнал</a>
-        <a asp-action="ImportVakJournals" class="btn btn-outline-primary">Импорт списка ВАК</a>
+        <a asp-action="ImportAllJournals" class="btn btn-outline-primary">Полный импорт журналов</a>
+
+        <a asp-action="ImportVakJournals" class="btn btn-outline-secondary">Импорт ВАК</a>
+
+        <form asp-action="ImportWhiteListJournals" method="post" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary">
+                Импорт Белого списка
+            </button>
+        </form>
+
+        <form asp-action="EnrichWhiteListRcsiLinks" method="post" class="d-inline">
+            <button type="submit" class="btn btn-outline-warning">
+                Заполнить Rcsi ID и URL
+            </button>
+        </form>
+
+        <form asp-action="EnrichWhiteListSubjectAreas" method="post" class="d-inline">
+            <button type="submit" class="btn btn-outline-success">
+                Заполнить тематики РЦНИ
+            </button>
+        </form>
     </div>
 }
 
 <form method="get" asp-action="Journals" class="mb-4">
     <div class="row g-2">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <input type="text"
                    name="title"
                    value="@ViewBag.TitleFilter"
@@ -40,7 +60,7 @@
                    name="issn"
                    value="@ViewBag.IssnFilter"
                    class="form-control"
-                   placeholder="Поиск по ISSN или E-ISSN" />
+                   placeholder="Поиск по ISSN" />
         </div>
 
         <div class="col-md-2">
@@ -94,6 +114,10 @@
         <div class="col-md-1">
             <button type="submit" class="btn btn-success w-100">Найти</button>
         </div>
+
+        <div class="col-md-1">
+            <a asp-action="Journals" class="btn btn-outline-secondary w-100">Сброс</a>
+        </div>
     </div>
 </form>
 
@@ -106,10 +130,10 @@
         <tr>
             <th>Название</th>
             <th>ISSN</th>
-            <th>E-ISSN</th>
             <th>Тематика</th>
             <th>ВАК</th>
             <th>Белый список</th>
+            <th>Уровень БС 2025</th>
             @if (APIClient.Researcher?.Role == UserRole.Администратор)
             {
                 <th>Действия</th>
@@ -121,11 +145,24 @@
         {
             <tr>
                 <td>@item.Title</td>
-                <td>@item.Issn</td>
-                <td>@item.EIssn</td>
-                <td>@item.SubjectArea</td>
+                <td>@(string.IsNullOrWhiteSpace(item.Issn) ? "—" : item.Issn)</td>
+                <td>@(string.IsNullOrWhiteSpace(item.SubjectArea) ? "—" : item.SubjectArea)</td>
                 <td>@(item.IsVak ? "Да" : "Нет")</td>
                 <td>@(item.IsWhiteList ? "Да" : "Нет")</td>
+                <td>
+                    @if (!item.IsWhiteList)
+                    {
+                        <span>Не в БС</span>
+                    }
+                    else if (!item.WhiteListLevel2025.HasValue)
+                    {
+                        <span>Без уровня</span>
+                    }
+                    else
+                    {
+                        <span>@item.WhiteListLevel2025</span>
+                    }
+                </td>
 
                 @if (APIClient.Researcher?.Role == UserRole.Администратор)
                 {

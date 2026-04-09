@@ -31,12 +31,6 @@ namespace ScientificActivityParsers.Parsers
                 @"(?<code>\d{2}\.\d{2}\.\d{2})\s*[–-]\s*(?<name>.*?)(?<branch>\((?:[^()]|\([^()]*\))*\))(?=(\s+\d{2}\.\d{2}\.\d{2}\s*[–-])|$)",
                 RegexOptions.Compiled | RegexOptions.Singleline);
 
-        // Разрешаем:
-        // 01.02.2022
-        // 01.022022
-        // 01022022
-        // 01.02.202   (обрезанный год)
-        // 01.02202    (обрезанный год без второй точки)
         private static readonly Regex DateFromRegex =
             new(
                 @"(?:\bс\s*)?(\d{2}(?:\.\d{2}\.\d{4}|\.\d{6}|\d{6}|\.\d{2}\.\d{3}|\.\d{5}|\d{7}))",
@@ -273,9 +267,12 @@ namespace ScientificActivityParsers.Parsers
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var issns = columnIssns.ToList();
+            var issns = columnIssns
+                .Concat(titleIssns)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            var cleanedTitle = CleanJournalTitle(rawTitle, issns.Concat(titleIssns).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+            var cleanedTitle = CleanJournalTitle(rawTitle, issns);
 
             if (string.IsNullOrWhiteSpace(cleanedTitle))
             {
@@ -296,7 +293,6 @@ namespace ScientificActivityParsers.Parsers
 
                     if (string.IsNullOrWhiteSpace(block.DateText))
                     {
-                        // Встречаются кривые блоки без даты. Пропускаем, чтобы не валить весь импорт.
                         continue;
                     }
 
@@ -310,7 +306,6 @@ namespace ScientificActivityParsers.Parsers
                 }
                 catch
                 {
-                    // Не валим весь журнал на одном кривом блоке PDF
                     continue;
                 }
             }
@@ -320,6 +315,14 @@ namespace ScientificActivityParsers.Parsers
                 Title = cleanedTitle,
                 Issn = issns.ElementAtOrDefault(0),
                 EIssn = issns.ElementAtOrDefault(1),
+                AllIssns = issns,
+                Url = null,
+                WhiteListLevel2023 = null,
+                WhiteListLevel2025 = null,
+                WhiteListState = null,
+                WhiteListNotice = null,
+                WhiteListAcceptedDate = null,
+                WhiteListDiscontinuedDate = null,
                 IsVak = true,
                 SourceName = "Перечень ВАК",
                 SourceActualDate = new DateTime(2026, 2, 17),

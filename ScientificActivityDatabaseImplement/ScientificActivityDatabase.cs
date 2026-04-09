@@ -126,6 +126,10 @@ namespace ScientificActivityDatabaseImplement
 
                 entity.Property(x => x.Title).IsRequired();
 
+                entity.HasIndex(x => x.Issn);
+
+                entity.HasIndex(x => x.RcsiRecordSourceId);
+
                 entity.HasMany(x => x.Publications)
                     .WithOne(x => x.Journal)
                     .HasForeignKey(x => x.JournalId)
