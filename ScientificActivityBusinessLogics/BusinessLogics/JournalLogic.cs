@@ -102,6 +102,36 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             return true;
         }
 
+        public JournalPagedListViewModel ReadPagedList(JournalSearchModel model)
+        {
+            if (model.Page <= 0)
+            {
+                model.Page = 1;
+            }
+
+            if (model.PageSize <= 0)
+            {
+                model.PageSize = 25;
+            }
+
+            var totalCount = _journalStorage.GetCount(model);
+            var journals = _journalStorage.GetPagedList(model);
+
+            return new JournalPagedListViewModel
+            {
+                Journals = journals,
+                CurrentPage = model.Page,
+                PageSize = model.PageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)model.PageSize),
+
+                Title = model.Title,
+                Issn = model.Issn,
+                IsVak = model.IsVak,
+                IsWhiteList = model.IsWhiteList
+            };
+        }
+
         private void CheckModel(JournalBindingModel model, bool withParams = true)
         {
             if (model == null)

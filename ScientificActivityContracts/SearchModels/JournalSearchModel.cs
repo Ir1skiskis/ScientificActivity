@@ -22,5 +22,8 @@ namespace ScientificActivityContracts.SearchModels
         public bool? IsVak { get; set; }
 
         public bool? IsWhiteList { get; set; }
+
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 25;
     }
 }

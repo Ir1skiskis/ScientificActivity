@@ -5,6 +5,7 @@ using ScientificActivityContracts.ViewModels;
 using ScientificActivityDataModels.Enums;
 using ScientificActivityParsers.Interfaces;
 using System.Diagnostics;
+using System.Net.Http.Headers;
 
 namespace ScientificActivityClientApp.Controllers
 {
@@ -405,7 +406,8 @@ namespace ScientificActivityClientApp.Controllers
 
         // -------------------- Журналы -----------------------------------
 
-        public IActionResult Journals()
+        [HttpGet]
+        public IActionResult Journals(string? title, string? issn, bool? isVak, bool? isWhiteList, int page = 1)
         {
             if (APIClient.Researcher == null)
             {
@@ -414,8 +416,76 @@ namespace ScientificActivityClientApp.Controllers
 
             try
             {
-                var journals = APIClient.GetRequest<List<JournalViewModel>>("api/Journal/GetAllJournals");
-                return View(journals ?? new List<JournalViewModel>());
+                const int pageSize = 25;
+
+                var allJournals = APIClient.GetRequest<List<JournalViewModel>>("api/Journal/GetAllJournals")
+                                 ?? new List<JournalViewModel>();
+
+                IEnumerable<JournalViewModel> query = allJournals;
+
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    query = query.Where(x =>
+                        !string.IsNullOrWhiteSpace(x.Title) &&
+                        x.Title.Contains(title, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrWhiteSpace(issn))
+                {
+                    query = query.Where(x =>
+                        (!string.IsNullOrWhiteSpace(x.Issn) &&
+                         x.Issn.Contains(issn, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.EIssn) &&
+                         x.EIssn.Contains(issn, StringComparison.OrdinalIgnoreCase)));
+                }
+
+                if (isVak.HasValue)
+                {
+                    query = query.Where(x => x.IsVak == isVak.Value);
+                }
+
+                if (isWhiteList.HasValue)
+                {
+                    query = query.Where(x => x.IsWhiteList == isWhiteList.Value);
+                }
+
+                var filteredJournals = query
+                    .OrderBy(x => x.Title)
+                    .ToList();
+
+                var totalCount = filteredJournals.Count;
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                if (totalPages == 0)
+                {
+                    totalPages = 1;
+                }
+
+                if (page < 1)
+                {
+                    page = 1;
+                }
+
+                if (page > totalPages)
+                {
+                    page = totalPages;
+                }
+
+                var journals = filteredJournals
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                ViewBag.CurrentPage = page;
+                ViewBag.TotalPages = totalPages;
+                ViewBag.TotalCount = totalCount;
+
+                ViewBag.TitleFilter = title;
+                ViewBag.IssnFilter = issn;
+                ViewBag.IsVakFilter = isVak;
+                ViewBag.IsWhiteListFilter = isWhiteList;
+
+                return View(journals);
             }
             catch (Exception ex)
             {
@@ -424,6 +494,7 @@ namespace ScientificActivityClientApp.Controllers
                 return View(new List<JournalViewModel>());
             }
         }
+
 
         [HttpGet]
         public IActionResult CreateJournal()
@@ -582,6 +653,76 @@ namespace ScientificActivityClientApp.Controllers
                 _logger.LogError(ex, "Ошибка удаления журнала");
                 TempData["Error"] = ex.Message;
                 return RedirectToAction("Journals");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult ImportVakJournals()
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Импорт доступен только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ImportVakJournals(IFormFile file)
+        {
+            if (APIClient.Researcher == null || APIClient.Researcher.Role != UserRole.Администратор)
+            {
+                TempData["Error"] = "Импорт доступен только администратору";
+                return RedirectToAction("Journals");
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                ViewBag.Error = "Выберите PDF-файл";
+                return View();
+            }
+
+            if (!Path.GetExtension(file.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                ViewBag.Error = "Можно загрузить только PDF-файл";
+                return View();
+            }
+
+            try
+            {
+                using var httpClient = new HttpClient();
+                using var form = new MultipartFormDataContent();
+                await using var fileStream = file.OpenReadStream();
+                using var streamContent = new StreamContent(fileStream);
+
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+                form.Add(streamContent, "file", file.FileName);
+
+                var url = $"{APIClient.ApiAddress}/api/Import/ImportVakJournals";
+                var response = await httpClient.PostAsync(url, form);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("ImportVakJournals response status: {StatusCode}", response.StatusCode);
+                _logger.LogInformation("ImportVakJournals response text: {ResponseText}", responseText);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    ViewBag.Error = $"Ошибка API ({(int)response.StatusCode}): {responseText}";
+                    return View();
+                }
+
+                TempData["Message"] = string.IsNullOrWhiteSpace(responseText)
+                    ? "Импорт журналов ВАК успешно завершён"
+                    : responseText;
+
+                return RedirectToAction("Journals");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при загрузке PDF-файла ВАК");
+                ViewBag.Error = ex.ToString();
+                return View();
             }
         }
 

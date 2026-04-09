@@ -17,5 +17,7 @@ namespace ScientificActivityContracts.StoragesContracts
         JournalViewModel? Insert(JournalBindingModel model);
         JournalViewModel? Update(JournalBindingModel model);
         JournalViewModel? Delete(JournalBindingModel model);
+        List<JournalViewModel> GetPagedList(JournalSearchModel model);
+        int GetCount(JournalSearchModel model);
     }
 }

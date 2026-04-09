@@ -135,5 +135,71 @@ namespace ScientificActivityDatabaseImplement.Implements
 
             return viewModel;
         }
+
+        public List<JournalViewModel> GetPagedList(JournalSearchModel model)
+        {
+            using var context = new ScientificActivityDatabase();
+
+            var query = context.Journals.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(model.Title))
+            {
+                query = query.Where(x => x.Title.Contains(model.Title));
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Issn))
+            {
+                query = query.Where(x => x.Issn != null && x.Issn.Contains(model.Issn));
+            }
+
+            if (model.IsVak.HasValue)
+            {
+                query = query.Where(x => x.IsVak == model.IsVak.Value);
+            }
+
+            if (model.IsWhiteList.HasValue)
+            {
+                query = query.Where(x => x.IsWhiteList == model.IsWhiteList.Value);
+            }
+
+            var skip = (model.Page - 1) * model.PageSize;
+
+            return query
+                .OrderBy(x => x.Title)
+                .Skip(skip)
+                .Take(model.PageSize)
+                .AsEnumerable()
+                .Select(x => x.GetViewModel)
+                .ToList();
+        }
+
+        public int GetCount(JournalSearchModel model)
+        {
+            using var context = new ScientificActivityDatabase();
+
+            var query = context.Journals.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(model.Title))
+            {
+                query = query.Where(x => x.Title.Contains(model.Title));
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Issn))
+            {
+                query = query.Where(x => x.Issn != null && x.Issn.Contains(model.Issn));
+            }
+
+            if (model.IsVak.HasValue)
+            {
+                query = query.Where(x => x.IsVak == model.IsVak.Value);
+            }
+
+            if (model.IsWhiteList.HasValue)
+            {
+                query = query.Where(x => x.IsWhiteList == model.IsWhiteList.Value);
+            }
+
+            return query.Count();
+        }
     }
 }

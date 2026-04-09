@@ -16,5 +16,6 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
         bool Create(JournalBindingModel model);
         bool Update(JournalBindingModel model);
         bool Delete(JournalBindingModel model);
+        JournalPagedListViewModel ReadPagedList(JournalSearchModel model);
     }
 }

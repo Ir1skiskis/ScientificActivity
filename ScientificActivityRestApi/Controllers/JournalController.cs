@@ -2,6 +2,7 @@
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.BusinessLogicsContracts;
 using ScientificActivityContracts.SearchModels;
+using ScientificActivityContracts.ViewModels;
 using ScientificActivityDataModels.Enums;
 
 namespace ScientificActivityRestApi.Controllers
@@ -144,6 +145,12 @@ namespace ScientificActivityRestApi.Controllers
                 _logger.LogError(ex, "Ошибка удаления журнала");
                 return BadRequest(ex.Message);
             }
+        }
+
+        [HttpPost]
+        public JournalPagedListViewModel GetJournalsPage([FromBody] JournalSearchModel model)
+        {
+            return _journalLogic.ReadPagedList(model);
         }
     }
 }

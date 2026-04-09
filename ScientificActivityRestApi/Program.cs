@@ -56,6 +56,11 @@ builder.Services.AddHttpClient<IELibraryParser, ELibraryParser>(client =>
     client.DefaultRequestHeaders.Add("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
 });
 
+builder.Services.AddScoped<IJournalParser, VakPdfJournalParser>();
+
+builder.Services.AddScoped<IJournalVakSpecialtyStorage, JournalVakSpecialtyStorage>();
+builder.Services.AddScoped<IJournalVakSpecialtyLogic, JournalVakSpecialtyLogic>();
+
 builder.Services.AddScoped<IImportService, ImportService>();
 
 builder.Services.AddDistributedMemoryCache();

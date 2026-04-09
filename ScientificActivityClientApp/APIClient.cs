@@ -9,6 +9,8 @@ namespace ScientificActivityClientApp
     {
         private static readonly HttpClient _httpClient = new();
 
+        public static string ApiAddress { get; set; } = "https://localhost:7173";
+
         public static ResearcherViewModel? Researcher { get; set; }
 
         public static void Connect(IConfiguration configuration)

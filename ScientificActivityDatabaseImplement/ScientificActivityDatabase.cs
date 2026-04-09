@@ -27,6 +27,7 @@ namespace ScientificActivityDatabaseImplement
         public virtual DbSet<Journal> Journals { get; set; }
         public virtual DbSet<Conference> Conferences { get; set; }
         public virtual DbSet<Grant> Grants { get; set; }
+        public virtual DbSet<JournalVakSpecialty> JournalVakSpecialties { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -152,6 +153,29 @@ namespace ScientificActivityDatabaseImplement
 
                 entity.Property(x => x.Amount)
                     .HasPrecision(18, 2);
+            });
+
+            modelBuilder.Entity<JournalVakSpecialty>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.SpecialtyCode).IsRequired();
+                entity.Property(x => x.SpecialtyName).IsRequired();
+                entity.Property(x => x.ScienceBranch).IsRequired();
+
+                entity.HasIndex(x => new
+                {
+                    x.JournalId,
+                    x.SpecialtyCode,
+                    x.ScienceBranch,
+                    x.DateFrom,
+                    x.DateTo
+                }).IsUnique();
+
+                entity.HasOne(x => x.Journal)
+                    .WithMany(x => x.VakSpecialties)
+                    .HasForeignKey(x => x.JournalId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

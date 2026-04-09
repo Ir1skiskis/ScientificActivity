@@ -1,0 +1,24 @@
+﻿@{
+    ViewData["Title"] = "Импорт списка ВАК";
+}
+
+<h2>Импорт списка ВАК</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="ImportVakJournals" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label">PDF-файл перечня ВАК</label>
+                <input type="file" name="file" accept=".pdf,application/pdf" class="form-control" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Импортировать</button>
+            <a asp-action="Journals" class="btn btn-secondary ms-2">Назад</a>
+        </form>
+    </div>
+</div>
