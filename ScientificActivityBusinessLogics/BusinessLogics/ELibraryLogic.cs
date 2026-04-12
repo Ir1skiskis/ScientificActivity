@@ -18,15 +18,18 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
         private readonly ILogger<ELibraryLogic> _logger;
         private readonly IELibraryParser _eLibraryParser;
         private readonly IResearcherStorage _researcherStorage;
+        private readonly IPublicationStorage _publicationStorage;
 
         public ELibraryLogic(
             ILogger<ELibraryLogic> logger,
             IELibraryParser eLibraryParser,
-            IResearcherStorage researcherStorage)
+            IResearcherStorage researcherStorage,
+            IPublicationStorage publicationStorage)
         {
             _logger = logger;
             _eLibraryParser = eLibraryParser;
             _researcherStorage = researcherStorage;
+            _publicationStorage = publicationStorage;
         }
 
         public List<ELibraryAuthorSearchViewModel> SearchAuthors(ELibraryAuthorSearchBindingModel model)
@@ -93,6 +96,88 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             };
 
             return _researcherStorage.Update(updateModel) != null;
+        }
+
+        public int ImportAuthorPublications(ELibraryImportBindingModel model)
+        {
+            _logger.LogInformation("ELibrary.ImportAuthorPublications. ResearcherId:{ResearcherId}", model.ResearcherId);
+
+            var researcher = _researcherStorage.GetElement(new ResearcherSearchModel
+            {
+                Id = model.ResearcherId
+            });
+
+            if (researcher == null)
+            {
+                throw new Exception("Исследователь не найден");
+            }
+
+            if (string.IsNullOrWhiteSpace(researcher.ELibraryAuthorId))
+            {
+                throw new Exception("У исследователя не указан ELibraryAuthorId");
+            }
+
+            var publications = _eLibraryParser.GetAuthorPublications(researcher.ELibraryAuthorId);
+            if (publications.Count == 0)
+            {
+                return 0;
+            }
+
+            var existingPublications = _publicationStorage.GetFilteredList(new PublicationSearchModel
+            {
+                ResearcherId = researcher.Id
+            });
+
+            var existingKeys = new HashSet<string>(
+                existingPublications.Select(x => BuildPublicationKey(x.Title, x.Year)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var importedCount = 0;
+            foreach (var publication in publications)
+            {
+                if (string.IsNullOrWhiteSpace(publication.Title))
+                {
+                    continue;
+                }
+
+                var publicationYear = publication.Year ?? DateTime.Now.Year;
+                var key = BuildPublicationKey(publication.Title, publicationYear);
+                if (existingKeys.Contains(key))
+                {
+                    continue;
+                }
+
+                var insertModel = new PublicationBindingModel
+                {
+                    Title = publication.Title,
+                    Authors = string.IsNullOrWhiteSpace(publication.Authors)
+                        ? $"{researcher.LastName} {researcher.FirstName} {researcher.MiddleName}".Trim()
+                        : publication.Authors,
+                    Year = publicationYear,
+                    PublicationDate = null,
+                    Type = ScientificActivityDataModels.Enums.PublicationType.Статья_в_журнале,
+                    Doi = null,
+                    Url = publication.Url,
+                    JournalId = null,
+                    ConferenceId = null,
+                    ResearcherId = researcher.Id,
+                    Keywords = publication.Keywords,
+                    Annotation = publication.Annotation
+                };
+
+                if (_publicationStorage.Insert(insertModel) != null)
+                {
+                    existingKeys.Add(key);
+                    importedCount++;
+                }
+            }
+
+            return importedCount;
+        }
+
+        private static string BuildPublicationKey(string title, int year)
+        {
+            return $"{title.Trim().ToUpperInvariant()}|{year}";
         }
 
         public bool ImportAuthorProfile(ELibraryImportBindingModel model)
