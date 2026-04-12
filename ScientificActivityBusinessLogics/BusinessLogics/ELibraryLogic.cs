@@ -102,10 +102,7 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
         {
             _logger.LogInformation("ELibrary.ImportAuthorPublications. ResearcherId:{ResearcherId}", model.ResearcherId);
 
-            var researcher = _researcherStorage.GetElement(new ResearcherSearchModel
-            {
-                Id = model.ResearcherId
-            });
+            var researcher = GetResearcherForImport(model);
 
             if (researcher == null)
             {
@@ -180,14 +177,47 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             return $"{title.Trim().ToUpperInvariant()}|{year}";
         }
 
+        private ResearcherViewModel? GetResearcherForImport(ELibraryImportBindingModel model)
+        {
+            if (model == null)
+            {
+                throw new ArgumentNullException(nameof(model));
+            }
+
+            ResearcherViewModel? researcher = null;
+
+            if (model.ResearcherId > 0)
+            {
+                researcher = _researcherStorage.GetElement(new ResearcherSearchModel
+                {
+                    Id = model.ResearcherId
+                });
+
+                if (researcher == null)
+                {
+                    researcher = _researcherStorage.GetElement(new ResearcherSearchModel
+                    {
+                        ELibraryAuthorId = model.ResearcherId.ToString()
+                    });
+                }
+            }
+
+            if (researcher == null && !string.IsNullOrWhiteSpace(model.ELibraryAuthorId))
+            {
+                researcher = _researcherStorage.GetElement(new ResearcherSearchModel
+                {
+                    ELibraryAuthorId = model.ELibraryAuthorId.Trim()
+                });
+            }
+
+            return researcher;
+        }
+
         public bool ImportAuthorProfile(ELibraryImportBindingModel model)
         {
             _logger.LogInformation("ELibrary.ImportAuthorProfile. ResearcherId:{ResearcherId}", model.ResearcherId);
 
-            var researcher = _researcherStorage.GetElement(new ResearcherSearchModel
-            {
-                Id = model.ResearcherId
-            });
+            var researcher = GetResearcherForImport(model);
 
             if (researcher == null)
             {

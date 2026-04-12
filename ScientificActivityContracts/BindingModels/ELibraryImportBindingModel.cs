@@ -9,5 +9,6 @@ namespace ScientificActivityContracts.BindingModels
     public class ELibraryImportBindingModel
     {
         public int ResearcherId { get; set; }
+        public string? ELibraryAuthorId { get; set; }
     }
 }
