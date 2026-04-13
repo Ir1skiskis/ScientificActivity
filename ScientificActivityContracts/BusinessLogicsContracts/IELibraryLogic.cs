@@ -14,6 +14,6 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
         ELibraryAuthorProfileViewModel? GetAuthorProfile(string authorId);
         bool BindAuthorToResearcher(ELibraryBindAuthorBindingModel model);
         bool ImportAuthorProfile(ELibraryImportBindingModel model);
-        int ImportAuthorPublications(ELibraryImportBindingModel model);
+        //int ImportAuthorPublications(ELibraryImportBindingModel model);
     }
 }

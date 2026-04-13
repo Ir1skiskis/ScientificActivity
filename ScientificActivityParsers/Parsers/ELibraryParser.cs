@@ -2,7 +2,6 @@
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.ViewModels;
 using ScientificActivityParsers.Interfaces;
-using ScientificActivityParsers.Models;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -62,51 +61,6 @@ namespace ScientificActivityParsers.Parsers
             ParseYearIndicators(doc, profile);
 
             return profile;
-        }
-
-        public List<ELibraryPublicationImportModel> GetAuthorPublications(string authorId)
-        {
-            if (string.IsNullOrWhiteSpace(authorId))
-            {
-                throw new ArgumentException("Не указан AuthorId");
-            }
-
-            var url = $"https://elibrary.ru/author_items.asp?authorid={authorId}&show_refs=1";
-            var html = _httpClient.GetStringAsync(url).Result;
-
-            if (string.IsNullOrWhiteSpace(html))
-            {
-                return new List<ELibraryPublicationImportModel>();
-            }
-
-            EnsureNotBlocked(html);
-
-            var listingDoc = new HtmlDocument();
-            listingDoc.LoadHtml(html);
-
-            var itemLinks = listingDoc.DocumentNode
-                .SelectNodes("//a[contains(@href,'item.asp?id=')]")
-                ?.Select(x => x.GetAttributeValue("href", string.Empty))
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct()
-                .ToList()
-                ?? new List<string>();
-
-            var results = new List<ELibraryPublicationImportModel>();
-            foreach (var link in itemLinks)
-            {
-                var itemUrl = BuildAbsoluteElibraryUrl(link);
-                var publication = ParsePublicationPage(itemUrl);
-                if (publication != null)
-                {
-                    results.Add(publication);
-                }
-            }
-
-            return results
-                .GroupBy(x => x.Title.Trim(), StringComparer.OrdinalIgnoreCase)
-                .Select(x => x.First())
-                .ToList();
         }
 
         private static void EnsureNotBlocked(string html)
@@ -169,56 +123,6 @@ namespace ScientificActivityParsers.Parsers
             {
                 profile.Department = department;
             }
-        }
-
-        private ELibraryPublicationImportModel? ParsePublicationPage(string itemUrl)
-        {
-            if (string.IsNullOrWhiteSpace(itemUrl))
-            {
-                return null;
-            }
-
-            var html = _httpClient.GetStringAsync(itemUrl).Result;
-            if (string.IsNullOrWhiteSpace(html))
-            {
-                return null;
-            }
-
-            EnsureNotBlocked(html);
-
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            var titleNode = doc.DocumentNode.SelectSingleNode("//title");
-            var titleFromPageTitle = ExtractTitleFromPageTitle(CleanText(titleNode?.InnerText));
-            var headerTitle = CleanText(
-                doc.DocumentNode.SelectSingleNode("//meta[@name='description']")?.GetAttributeValue("content", string.Empty));
-
-            var title = !string.IsNullOrWhiteSpace(titleFromPageTitle)
-                ? titleFromPageTitle
-                : headerTitle;
-
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                return null;
-            }
-
-            var publication = new ELibraryPublicationImportModel
-            {
-                Title = title,
-                Url = itemUrl,
-                Year = ExtractPublicationYear(doc),
-                JournalTitle = ExtractFieldValue(doc, "ЖУРНАЛ"),
-                Authors = ExtractFieldValue(doc, "АВТОРЫ"),
-                Keywords = ExtractFieldValue(doc, "КЛЮЧЕВЫЕ СЛОВА"),
-                Annotation = ExtractFieldValue(doc, "АННОТАЦИЯ")
-            };
-
-            publication.Authors = TrimKnownPostfix(publication.Authors);
-            publication.Keywords = NormalizeKeywords(publication.Keywords);
-            publication.Annotation = TrimKnownPostfix(publication.Annotation);
-
-            return publication;
         }
 
         private static void ParseGeneralIndicators(HtmlDocument doc, ELibraryAuthorProfileViewModel profile)
@@ -569,131 +473,6 @@ namespace ScientificActivityParsers.Parsers
             decoded = decoded.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
             decoded = Regex.Replace(decoded, @"\s+", " ");
             return decoded.Trim();
-        }
-
-        private static string BuildAbsoluteElibraryUrl(string href)
-        {
-            var cleanedHref = href.Trim();
-            if (cleanedHref.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                cleanedHref.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                return cleanedHref;
-            }
-
-            if (cleanedHref.StartsWith("/"))
-            {
-                return $"https://elibrary.ru{cleanedHref}";
-            }
-
-            return $"https://elibrary.ru/{cleanedHref}";
-        }
-
-        private static string ExtractTitleFromPageTitle(string pageTitle)
-        {
-            if (string.IsNullOrWhiteSpace(pageTitle))
-            {
-                return string.Empty;
-            }
-
-            var variants = new[]
-            {
-                " - статья - eLIBRARY.RU",
-                " - eLIBRARY.RU",
-                " | eLIBRARY.RU"
-            };
-
-            foreach (var suffix in variants)
-            {
-                var idx = pageTitle.IndexOf(suffix, StringComparison.OrdinalIgnoreCase);
-                if (idx > 0)
-                {
-                    return pageTitle[..idx].Trim();
-                }
-            }
-
-            return pageTitle.Trim();
-        }
-
-        private static int? ExtractPublicationYear(HtmlDocument doc)
-        {
-            var fullText = CleanText(doc.DocumentNode.InnerText);
-            var yearMatch = Regex.Match(fullText, @"\b(19\d{2}|20\d{2})\b");
-            if (!yearMatch.Success)
-            {
-                return null;
-            }
-
-            if (int.TryParse(yearMatch.Value, out var year))
-            {
-                return year;
-            }
-
-            return null;
-        }
-
-        private static string? ExtractFieldValue(HtmlDocument doc, string fieldName)
-        {
-            var node = doc.DocumentNode.SelectSingleNode(
-                $"//*[contains(translate(normalize-space(text()),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'),'{fieldName}')]");
-            if (node == null)
-            {
-                return null;
-            }
-
-            var row = node.SelectSingleNode("./ancestor::tr[1]");
-            if (row != null)
-            {
-                var allText = CleanText(row.InnerText);
-                var valueFromRow = Regex.Replace(allText, $"^{Regex.Escape(fieldName)}\\s*[:\\-]?", string.Empty, RegexOptions.IgnoreCase).Trim();
-                if (!string.IsNullOrWhiteSpace(valueFromRow) && !valueFromRow.Equals(fieldName, StringComparison.OrdinalIgnoreCase))
-                {
-                    return valueFromRow;
-                }
-
-                var nextTd = node.SelectSingleNode("./following::td[1]");
-                var nextTdText = CleanText(nextTd?.InnerText);
-                if (!string.IsNullOrWhiteSpace(nextTdText))
-                {
-                    return nextTdText;
-                }
-            }
-
-            var allNodeText = CleanText(node.ParentNode?.InnerText ?? node.InnerText);
-            var split = allNodeText.Split(':', 2, StringSplitOptions.TrimEntries);
-            if (split.Length == 2)
-            {
-                return split[1];
-            }
-
-            return null;
-        }
-
-        private static string? TrimKnownPostfix(string? text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return null;
-            }
-
-            return CleanText(text);
-        }
-
-        private static string? NormalizeKeywords(string? text)
-        {
-            var cleaned = TrimKnownPostfix(text);
-            if (string.IsNullOrWhiteSpace(cleaned))
-            {
-                return null;
-            }
-
-            var keywords = cleaned
-                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Trim())
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            return keywords.Count == 0 ? null : string.Join(", ", keywords);
         }
 
         private static int? ExtractFirstInt(string? text)

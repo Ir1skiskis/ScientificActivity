@@ -13,6 +13,5 @@ namespace ScientificActivityParsers.Interfaces
     {
         List<ELibraryAuthorSearchViewModel> SearchAuthors(ELibraryAuthorSearchBindingModel model);
         ELibraryAuthorProfileViewModel? GetAuthorProfile(string authorId);
-        List<ELibraryPublicationImportModel> GetAuthorPublications(string authorId);
     }
 }

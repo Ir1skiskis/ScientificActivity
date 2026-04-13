@@ -73,17 +73,17 @@ namespace ScientificActivityRestApi.Controllers
             }
         }
 
-        [HttpPost]
-        public IActionResult ImportAuthorPublications([FromBody] ELibraryImportBindingModel model)
-        {
-            try
-            {
-                return Ok(_logic.ImportAuthorPublications(model));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        //[HttpPost]
+        //public IActionResult ImportAuthorPublications([FromBody] ELibraryImportBindingModel model)
+        //{
+        //    try
+        //    {
+        //        return Ok(_logic.ImportAuthorPublications(model));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(ex.Message);
+        //    }
+        //}
     }
 }

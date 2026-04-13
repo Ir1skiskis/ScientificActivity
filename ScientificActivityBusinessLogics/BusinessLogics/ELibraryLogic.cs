@@ -98,79 +98,79 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             return _researcherStorage.Update(updateModel) != null;
         }
 
-        public int ImportAuthorPublications(ELibraryImportBindingModel model)
-        {
-            _logger.LogInformation("ELibrary.ImportAuthorPublications. ResearcherId:{ResearcherId}", model.ResearcherId);
+        //public int ImportAuthorPublications(ELibraryImportBindingModel model)
+        //{
+        //    _logger.LogInformation("ELibrary.ImportAuthorPublications. ResearcherId:{ResearcherId}", model.ResearcherId);
 
-            var researcher = GetResearcherForImport(model);
+        //    var researcher = GetResearcherForImport(model);
 
-            if (researcher == null)
-            {
-                throw new Exception("Исследователь не найден");
-            }
+        //    if (researcher == null)
+        //    {
+        //        throw new Exception("Исследователь не найден");
+        //    }
 
-            if (string.IsNullOrWhiteSpace(researcher.ELibraryAuthorId))
-            {
-                throw new Exception("У исследователя не указан ELibraryAuthorId");
-            }
+        //    if (string.IsNullOrWhiteSpace(researcher.ELibraryAuthorId))
+        //    {
+        //        throw new Exception("У исследователя не указан ELibraryAuthorId");
+        //    }
 
-            var publications = _eLibraryParser.GetAuthorPublications(researcher.ELibraryAuthorId);
-            if (publications.Count == 0)
-            {
-                return 0;
-            }
+        //    //var publications = _eLibraryParser.GetAuthorPublications(researcher.ELibraryAuthorId);
+        //    //if (publications.Count == 0)
+        //    //{
+        //    //    return 0;
+        //    //}
 
-            var existingPublications = _publicationStorage.GetFilteredList(new PublicationSearchModel
-            {
-                ResearcherId = researcher.Id
-            });
+        //    var existingPublications = _publicationStorage.GetFilteredList(new PublicationSearchModel
+        //    {
+        //        ResearcherId = researcher.Id
+        //    });
 
-            var existingKeys = new HashSet<string>(
-                existingPublications.Select(x => BuildPublicationKey(x.Title, x.Year)),
-                StringComparer.OrdinalIgnoreCase);
+        //    var existingKeys = new HashSet<string>(
+        //        existingPublications.Select(x => BuildPublicationKey(x.Title, x.Year)),
+        //        StringComparer.OrdinalIgnoreCase);
 
-            var importedCount = 0;
-            foreach (var publication in publications)
-            {
-                if (string.IsNullOrWhiteSpace(publication.Title))
-                {
-                    continue;
-                }
+        //    var importedCount = 0;
+        //    foreach (var publication in publications)
+        //    {
+        //        if (string.IsNullOrWhiteSpace(publication.Title))
+        //        {
+        //            continue;
+        //        }
 
-                var publicationYear = publication.Year ?? DateTime.Now.Year;
-                var key = BuildPublicationKey(publication.Title, publicationYear);
-                if (existingKeys.Contains(key))
-                {
-                    continue;
-                }
+        //        var publicationYear = publication.Year ?? DateTime.Now.Year;
+        //        var key = BuildPublicationKey(publication.Title, publicationYear);
+        //        if (existingKeys.Contains(key))
+        //        {
+        //            continue;
+        //        }
 
-                var insertModel = new PublicationBindingModel
-                {
-                    Title = publication.Title,
-                    Authors = string.IsNullOrWhiteSpace(publication.Authors)
-                        ? $"{researcher.LastName} {researcher.FirstName} {researcher.MiddleName}".Trim()
-                        : publication.Authors,
-                    Year = publicationYear,
-                    PublicationDate = null,
-                    Type = ScientificActivityDataModels.Enums.PublicationType.Статья_в_журнале,
-                    Doi = null,
-                    Url = publication.Url,
-                    JournalId = null,
-                    ConferenceId = null,
-                    ResearcherId = researcher.Id,
-                    Keywords = publication.Keywords,
-                    Annotation = publication.Annotation
-                };
+        //        var insertModel = new PublicationBindingModel
+        //        {
+        //            Title = publication.Title,
+        //            Authors = string.IsNullOrWhiteSpace(publication.Authors)
+        //                ? $"{researcher.LastName} {researcher.FirstName} {researcher.MiddleName}".Trim()
+        //                : publication.Authors,
+        //            Year = publicationYear,
+        //            PublicationDate = null,
+        //            Type = ScientificActivityDataModels.Enums.PublicationType.Статья_в_журнале,
+        //            Doi = null,
+        //            Url = publication.Url,
+        //            JournalId = null,
+        //            ConferenceId = null,
+        //            ResearcherId = researcher.Id,
+        //            Keywords = publication.Keywords,
+        //            Annotation = publication.Annotation
+        //        };
 
-                if (_publicationStorage.Insert(insertModel) != null)
-                {
-                    existingKeys.Add(key);
-                    importedCount++;
-                }
-            }
+        //        if (_publicationStorage.Insert(insertModel) != null)
+        //        {
+        //            existingKeys.Add(key);
+        //            importedCount++;
+        //        }
+        //    }
 
-            return importedCount;
-        }
+        //    return importedCount;
+        //}
 
         private static string BuildPublicationKey(string title, int year)
         {
