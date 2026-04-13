@@ -28,6 +28,11 @@ namespace ScientificActivityDatabaseImplement
         public virtual DbSet<Conference> Conferences { get; set; }
         public virtual DbSet<Grant> Grants { get; set; }
         public virtual DbSet<JournalVakSpecialty> JournalVakSpecialties { get; set; }
+        public DbSet<Tag> Tags { get; set; }
+        public DbSet<ResearcherTag> ResearcherTags { get; set; }
+        public DbSet<ConferenceTag> ConferenceTags { get; set; }
+        public DbSet<GrantTag> GrantTags { get; set; }
+        public DbSet<JournalTag> JournalTags { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -181,6 +186,74 @@ namespace ScientificActivityDatabaseImplement
                     .HasForeignKey(x => x.JournalId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            modelBuilder.Entity<Tag>()
+        .HasIndex(x => x.NormalizedName)
+        .IsUnique();
+
+            modelBuilder.Entity<ResearcherTag>()
+                .HasOne(x => x.Researcher)
+                .WithMany(x => x.ResearcherTags)
+                .HasForeignKey(x => x.ResearcherId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ResearcherTag>()
+                .HasOne(x => x.Tag)
+                .WithMany(x => x.ResearcherTags)
+                .HasForeignKey(x => x.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ConferenceTag>()
+                .HasOne(x => x.Conference)
+                .WithMany(x => x.ConferenceTags)
+                .HasForeignKey(x => x.ConferenceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ConferenceTag>()
+                .HasOne(x => x.Tag)
+                .WithMany(x => x.ConferenceTags)
+                .HasForeignKey(x => x.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GrantTag>()
+                .HasOne(x => x.Grant)
+                .WithMany(x => x.GrantTags)
+                .HasForeignKey(x => x.GrantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GrantTag>()
+                .HasOne(x => x.Tag)
+                .WithMany(x => x.GrantTags)
+                .HasForeignKey(x => x.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JournalTag>()
+                .HasOne(x => x.Journal)
+                .WithMany(x => x.JournalTags)
+                .HasForeignKey(x => x.JournalId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JournalTag>()
+                .HasOne(x => x.Tag)
+                .WithMany(x => x.JournalTags)
+                .HasForeignKey(x => x.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ResearcherTag>()
+                .HasIndex(x => new { x.ResearcherId, x.TagId })
+                .IsUnique();
+
+            modelBuilder.Entity<ConferenceTag>()
+                .HasIndex(x => new { x.ConferenceId, x.TagId })
+                .IsUnique();
+
+            modelBuilder.Entity<GrantTag>()
+                .HasIndex(x => new { x.GrantId, x.TagId })
+                .IsUnique();
+
+            modelBuilder.Entity<JournalTag>()
+                .HasIndex(x => new { x.JournalId, x.TagId })
+                .IsUnique();
         }
     }
 }

@@ -49,6 +49,8 @@ namespace ScientificActivityDatabaseImplement.Models
 
         public virtual List<JournalVakSpecialty> VakSpecialties { get; set; } = new();
 
+        public virtual List<JournalTag> JournalTags { get; set; } = new();
+
         public static Journal? Create(JournalBindingModel? model)
         {
             if (model == null)

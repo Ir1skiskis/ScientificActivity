@@ -43,6 +43,7 @@ namespace ScientificActivityDatabaseImplement.Models
         public string? Url { get; set; }
 
         public virtual List<Publication> Publications { get; set; } = new();
+        public virtual List<ConferenceTag> ConferenceTags { get; set; } = new();
 
         public static Conference? Create(ConferenceBindingModel model)
         {

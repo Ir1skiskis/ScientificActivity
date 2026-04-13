@@ -5,6 +5,11 @@
 @{
     ViewData["Title"] = "Профиль";
 }
+@{
+    var allTags = ViewBag.AllTags as List<TagViewModel> ?? new List<TagViewModel>();
+    var selectedTags = ViewBag.SelectedTags as List<TagViewModel> ?? new List<TagViewModel>();
+    var selectedTagIds = selectedTags.Select(x => x.Id).ToHashSet();
+}
 
 <div class="row justify-content-center">
     <div class="col-md-8">
@@ -24,6 +29,13 @@
                 {
                     <div class="alert alert-success">
                         @ViewBag.Message
+                    </div>
+                }
+
+                @if (TempData["Message"] != null)
+                {
+                    <div class="alert alert-success">
+                        @TempData["Message"]
                     </div>
                 }
 
@@ -85,8 +97,11 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Научные интересы</label>
-                        <textarea name="researchTopics" class="form-control" rows="3">@Model.ResearchTopics</textarea>
+                        <label class="form-label">Научные интересы (текстовое описание)</label>
+                        <textarea name="researchTopics" class="form-control" rows="3" placeholder="Например: искусственный интеллект, анализ данных, медицинские информационные системы">@Model.ResearchTopics</textarea>
+                        <div class="form-text">
+                            Это свободное текстовое описание. Для подбора рекомендаций используйте блок тегов ниже.
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -101,6 +116,50 @@
 
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                    </div>
+                </form>
+
+                <hr class="my-4" />
+
+                <h5 class="mb-3">Интересы для рекомендаций</h5>
+
+                <form method="post" asp-controller="Recommendation" asp-action="SaveResearcherTags">
+                    <div class="mb-3">
+                        <label class="form-label">Выберите теги</label>
+                        <select name="tagIds" class="form-select" multiple size="12">
+                            @foreach (var tag in allTags.OrderBy(x => x.Name))
+                            {
+                                if (selectedTagIds.Contains(tag.Id))
+                                {
+                                    <option value="@tag.Id" selected>@tag.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@tag.Id">@tag.Name</option>
+                                }
+                            }
+                        </select>
+                        <div class="form-text">
+                            Для выбора нескольких тегов зажмите Ctrl.
+                        </div>
+                    </div>
+
+                    @if (selectedTags.Any())
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Выбранные теги</label>
+                            <div>
+                                @foreach (var tag in selectedTags.OrderBy(x => x.Name))
+                                {
+                                    <span class="badge bg-secondary me-1 mb-1">@tag.Name</span>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-outline-primary">Сохранить интересы для рекомендаций</button>
+                        <a asp-controller="Recommendation" asp-action="Index" class="btn btn-success">Перейти к рекомендациям</a>
                     </div>
                 </form>
 

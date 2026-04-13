@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ScientificActivityContracts\ScientificActivityContracts.csproj" />
+    <ProjectReference Include="..\ScientificActivityDatabaseImplement\ScientificActivityDatabaseImplement.csproj" />
     <ProjectReference Include="..\ScientificActivityParsers\ScientificActivityParsers.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,107 @@
+﻿@model ScientificActivityContracts.ViewModels.RecommendationResultViewModel
+
+@{
+    ViewData["Title"] = "Мои рекомендации";
+}
+
+<h2 class="mb-4">Мои рекомендации</h2>
+
+<h4>Гранты</h4>
+@if (Model.Grants.Count == 0)
+{
+    <div class="alert alert-info">Подходящих грантов не найдено.</div>
+}
+else
+{
+    <div class="row">
+        @foreach (var item in Model.Grants)
+        {
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Title</h5>
+                        <p class="card-text">@item.Description</p>
+                        <p><b>Совпадений:</b> @item.MatchCount</p>
+                        <p><b>Теги:</b> @string.Join(", ", item.MatchedTags)</p>
+                        @if (item.DateFrom.HasValue)
+                        {
+                            <p><b>Начало:</b> @item.DateFrom.Value.ToString("dd.MM.yyyy")</p>
+                        }
+                        @if (item.DateTo.HasValue)
+                        {
+                            <p><b>Окончание:</b> @item.DateTo.Value.ToString("dd.MM.yyyy")</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(item.Url))
+                        {
+                            <a href="@item.Url" target="_blank" class="btn btn-outline-primary">Открыть</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<h4 class="mt-4">Конференции</h4>
+@if (Model.Conferences.Count == 0)
+{
+    <div class="alert alert-info">Подходящих конференций не найдено.</div>
+}
+else
+{
+    <div class="row">
+        @foreach (var item in Model.Conferences)
+        {
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Title</h5>
+                        <p class="card-text">@item.Description</p>
+                        <p><b>Совпадений:</b> @item.MatchCount</p>
+                        <p><b>Теги:</b> @string.Join(", ", item.MatchedTags)</p>
+                        @if (item.DateFrom.HasValue)
+                        {
+                            <p><b>Начало:</b> @item.DateFrom.Value.ToString("dd.MM.yyyy")</p>
+                        }
+                        @if (item.DateTo.HasValue)
+                        {
+                            <p><b>Окончание:</b> @item.DateTo.Value.ToString("dd.MM.yyyy")</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(item.Url))
+                        {
+                            <a href="@item.Url" target="_blank" class="btn btn-outline-primary">Открыть</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<h4 class="mt-4">Журналы</h4>
+@if (Model.Journals.Count == 0)
+{
+    <div class="alert alert-info">Подходящих журналов не найдено.</div>
+}
+else
+{
+    <div class="row">
+        @foreach (var item in Model.Journals)
+        {
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Title</h5>
+                        <p class="card-text">@item.Description</p>
+                        <p><b>Совпадений:</b> @item.MatchCount</p>
+                        <p><b>Теги:</b> @string.Join(", ", item.MatchedTags)</p>
+                        @if (!string.IsNullOrWhiteSpace(item.Url))
+                        {
+                            <a href="@item.Url" target="_blank" class="btn btn-outline-primary">Открыть</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

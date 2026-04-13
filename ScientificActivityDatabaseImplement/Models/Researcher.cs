@@ -55,6 +55,8 @@ namespace ScientificActivityDatabaseImplement.Models
 
         public virtual List<ResearcherInterest> Interests { get; set; } = new();
 
+        public virtual List<ResearcherTag> ResearcherTags { get; set; } = new();
+
         public static Researcher? Create(ResearcherBindingModel model)
         {
             if (model == null)

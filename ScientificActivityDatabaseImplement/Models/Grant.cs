@@ -43,6 +43,8 @@ namespace ScientificActivityDatabaseImplement.Models
 
         public string? Url { get; set; }
 
+        public virtual List<GrantTag> GrantTags { get; set; } = new();
+
         public static Grant? Create(GrantBindingModel model)
         {
             if (model == null)

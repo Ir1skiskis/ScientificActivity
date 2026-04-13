@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ScientificActivityBusinessLogics.BusinessLogics;
 using ScientificActivityContracts.BusinessLogicsContracts;
 using ScientificActivityContracts.StoragesContracts;
+using ScientificActivityDatabaseImplement;
 using ScientificActivityDatabaseImplement.Implements;
 using ScientificActivityParsers.Interfaces;
 using ScientificActivityParsers.Parsers;
@@ -30,6 +32,17 @@ builder.Services.AddTransient<IJournalLogic, JournalLogic>();
 builder.Services.AddTransient<IPublicationLogic, PublicationLogic>();
 builder.Services.AddTransient<IResearcherInterestLogic, ResearcherInterestLogic>();
 builder.Services.AddTransient<IResearcherLogic, ResearcherLogic>();
+
+builder.Services.AddDbContext<ScientificActivityDatabase>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
+
+
+builder.Services.AddScoped<ITagStorage, TagStorage>();
+builder.Services.AddScoped<ITagLogic, TagLogic>();
+builder.Services.AddScoped<IRecommendationLogic, RecommendationLogic>();
+builder.Services.AddScoped<ITagPopulationLogic, TagPopulationLogic>();
 
 builder.Services.AddHttpClient<IGrantParser, RscfGrantParser>();
 builder.Services.AddHttpClient<IConferenceParser, NaKonferenciiConferenceParser>(client =>
@@ -92,6 +105,12 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var tagPopulationLogic = scope.ServiceProvider.GetRequiredService<ITagPopulationLogic>();
+    tagPopulationLogic.PopulateTags();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

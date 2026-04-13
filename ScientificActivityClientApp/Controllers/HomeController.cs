@@ -214,7 +214,7 @@ namespace ScientificActivityClientApp.Controllers
             }
 
             UpdateResearcherProfile();
-            FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+            FillProfileViewBags();
 
             return View(APIClient.Researcher);
         }
@@ -248,6 +248,7 @@ namespace ScientificActivityClientApp.Controllers
                     string.IsNullOrWhiteSpace(position))
                 {
                     ViewBag.Error = "Заполните обязательные поля";
+                    FillProfileViewBags();
                     return View(APIClient.Researcher);
                 }
 
@@ -279,19 +280,36 @@ namespace ScientificActivityClientApp.Controllers
                 APIClient.Researcher.Department = department;
                 APIClient.Researcher.Position = position;
                 APIClient.Researcher.AcademicDegree = (AcademicDegree)academicDegree;
-                APIClient.Researcher.ELibraryAuthorId = eLibraryAuthorId;
-                APIClient.Researcher.ResearchTopics = researchTopics;
+                APIClient.Researcher.ELibraryAuthorId = string.IsNullOrWhiteSpace(eLibraryAuthorId) ? null : eLibraryAuthorId;
+                APIClient.Researcher.ResearchTopics = string.IsNullOrWhiteSpace(researchTopics) ? null : researchTopics;
 
                 ViewBag.Message = "Профиль успешно обновлён";
-                FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+                FillProfileViewBags();
                 return View(APIClient.Researcher);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка обновления профиля");
                 ViewBag.Error = ex.Message;
-                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                FillProfileViewBags();
                 return View(APIClient.Researcher);
+            }
+        }
+
+        private void FillProfileViewBags()
+        {
+            FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+
+            if (APIClient.Researcher != null)
+            {
+                ViewBag.AllTags = APIClient.GetRequest<List<TagViewModel>>("api/Tag/GetSelectableTags") ?? new List<TagViewModel>();
+                ViewBag.SelectedTags = APIClient.GetRequest<List<TagViewModel>>(
+                    $"api/Tag/GetResearcherTags?researcherId={APIClient.Researcher.Id}") ?? new List<TagViewModel>();
+            }
+            else
+            {
+                ViewBag.AllTags = new List<TagViewModel>();
+                ViewBag.SelectedTags = new List<TagViewModel>();
             }
         }
 
@@ -1444,19 +1462,10 @@ namespace ScientificActivityClientApp.Controllers
                 return RedirectToAction("Enter");
             }
 
-            try
-            {
-                var interests = APIClient.GetRequest<List<ResearcherInterestViewModel>>(
-                    $"api/ResearcherInterest/GetByResearcher?researcherId={APIClient.Researcher.Id}");
+            var model = APIClient.GetRequest<RecommendationResultViewModel>(
+                $"api/Recommendation/GetRecommendations?researcherId={APIClient.Researcher.Id}");
 
-                return View(interests ?? new List<ResearcherInterestViewModel>());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка получения интересов исследователя");
-                TempData["Error"] = ex.Message;
-                return View(new List<ResearcherInterestViewModel>());
-            }
+            return View("Recommendation", model ?? new RecommendationResultViewModel());
         }
 
         [HttpGet]
