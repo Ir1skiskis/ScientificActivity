@@ -184,11 +184,11 @@ namespace ScientificActivityClientApp.Controllers
 
         // -------------------- Профиль --------------------
 
-        private void FillELibraryProfileViewBag(string? authorId)
+        private void FillELibraryProfileViewBag()
         {
             ViewBag.ELibraryProfile = null;
 
-            if (string.IsNullOrWhiteSpace(authorId))
+            if (APIClient.Researcher == null)
             {
                 return;
             }
@@ -196,7 +196,7 @@ namespace ScientificActivityClientApp.Controllers
             try
             {
                 var profile = APIClient.GetRequest<ELibraryAuthorProfileViewModel>(
-                    $"api/ELibrary/GetAuthorProfile?authorId={authorId}");
+                    $"api/ELibrary/GetStoredAuthorProfile?researcherId={APIClient.Researcher.Id}");
 
                 ViewBag.ELibraryProfile = profile;
             }
@@ -298,7 +298,7 @@ namespace ScientificActivityClientApp.Controllers
 
         private void FillProfileViewBags()
         {
-            FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+            FillELibraryProfileViewBag();
 
             if (APIClient.Researcher != null)
             {
@@ -326,7 +326,7 @@ namespace ScientificActivityClientApp.Controllers
                 if (string.IsNullOrWhiteSpace(authorId))
                 {
                     ViewBag.Error = "Укажите AuthorId eLibrary";
-                    FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+                    FillELibraryProfileViewBag();
                     return View("Profile", APIClient.Researcher);
                 }
 
@@ -338,7 +338,7 @@ namespace ScientificActivityClientApp.Controllers
 
                 APIClient.Researcher.ELibraryAuthorId = authorId.Trim();
 
-                FillELibraryProfileViewBag(APIClient.Researcher.ELibraryAuthorId);
+                FillELibraryProfileViewBag();
                 ViewBag.Message = "AuthorId eLibrary успешно привязан";
 
                 return View("Profile", APIClient.Researcher);
@@ -347,7 +347,7 @@ namespace ScientificActivityClientApp.Controllers
             {
                 _logger.LogError(ex, "Ошибка привязки AuthorId eLibrary");
                 ViewBag.Error = ex.Message;
-                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                FillELibraryProfileViewBag();
                 return View("Profile", APIClient.Researcher);
             }
         }
@@ -372,7 +372,7 @@ namespace ScientificActivityClientApp.Controllers
                     return View("Profile", APIClient.Researcher);
                 }
 
-                FillELibraryProfileViewBag(actualAuthorId);
+                FillELibraryProfileViewBag();
                 ViewBag.Message = "Профиль eLibrary загружен";
 
                 return View("Profile", APIClient.Researcher);
@@ -381,7 +381,7 @@ namespace ScientificActivityClientApp.Controllers
             {
                 _logger.LogError(ex, "Ошибка загрузки профиля eLibrary");
                 ViewBag.Error = ex.Message;
-                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                FillELibraryProfileViewBag();
                 return View("Profile", APIClient.Researcher);
             }
         }
@@ -399,18 +399,20 @@ namespace ScientificActivityClientApp.Controllers
                 if (string.IsNullOrWhiteSpace(APIClient.Researcher.ELibraryAuthorId))
                 {
                     ViewBag.Error = "Сначала укажите и привяжите AuthorId eLibrary";
+                    FillProfileViewBags();
                     return View("Profile", APIClient.Researcher);
                 }
 
                 APIClient.PostRequest("api/ELibrary/ImportAuthorProfile", new ELibraryImportBindingModel
                 {
-                    ResearcherId = APIClient.Researcher.Id
+                    ResearcherId = APIClient.Researcher.Id,
+                    ELibraryAuthorId = APIClient.Researcher.ELibraryAuthorId
                 });
 
                 UpdateResearcherProfile();
-                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                FillProfileViewBags();
 
-                ViewBag.Message = "Данные из eLibrary импортированы в профиль";
+                ViewBag.Message = "Расширенный профиль eLibrary импортирован и сохранён в базу данных";
 
                 return View("Profile", APIClient.Researcher);
             }
@@ -418,7 +420,7 @@ namespace ScientificActivityClientApp.Controllers
             {
                 _logger.LogError(ex, "Ошибка импорта профиля eLibrary");
                 ViewBag.Error = ex.Message;
-                FillELibraryProfileViewBag(APIClient.Researcher?.ELibraryAuthorId);
+                FillProfileViewBags();
                 return View("Profile", APIClient.Researcher);
             }
         }
@@ -963,7 +965,18 @@ namespace ScientificActivityClientApp.Controllers
 
         // -------------------- Конференции -------------------------------
 
-        public IActionResult Conferences(int page = 1)
+        [HttpGet]
+        public IActionResult Conferences(
+    string? search,
+    string? city,
+    string? country,
+    string? organizer,
+    bool? onlyUpcoming,
+    DateTime? startDateFrom,
+    DateTime? startDateTo,
+    DateTime? endDateFrom,
+    DateTime? endDateTo,
+    int page = 1)
         {
             if (APIClient.Researcher == null)
             {
@@ -972,12 +985,85 @@ namespace ScientificActivityClientApp.Controllers
 
             try
             {
-                const int pageSize = 10;
+                const int pageSize = 12;
 
                 var allConferences = APIClient.GetRequest<List<ConferenceViewModel>>("api/Conference/GetAllConferences")
                                      ?? new List<ConferenceViewModel>();
 
-                var totalCount = allConferences.Count;
+                IEnumerable<ConferenceViewModel> query = allConferences;
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var normalizedSearch = search.Trim();
+
+                    query = query.Where(x =>
+                        (!string.IsNullOrWhiteSpace(x.Title) &&
+                         x.Title.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.Description) &&
+                         x.Description.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.SubjectArea) &&
+                         x.SubjectArea.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)));
+                }
+
+                if (!string.IsNullOrWhiteSpace(city))
+                {
+                    var normalizedCity = city.Trim();
+
+                    query = query.Where(x =>
+                        !string.IsNullOrWhiteSpace(x.City) &&
+                        x.City.Contains(normalizedCity, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrWhiteSpace(country))
+                {
+                    var normalizedCountry = country.Trim();
+
+                    query = query.Where(x =>
+                        !string.IsNullOrWhiteSpace(x.Country) &&
+                        x.Country.Contains(normalizedCountry, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrWhiteSpace(organizer))
+                {
+                    var normalizedOrganizer = organizer.Trim();
+
+                    query = query.Where(x =>
+                        !string.IsNullOrWhiteSpace(x.Organizer) &&
+                        x.Organizer.Contains(normalizedOrganizer, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (onlyUpcoming == true)
+                {
+                    var today = DateTime.Today;
+                    query = query.Where(x => x.EndDate.Date >= today);
+                }
+
+                if (startDateFrom.HasValue)
+                {
+                    query = query.Where(x => x.StartDate.Date >= startDateFrom.Value.Date);
+                }
+
+                if (startDateTo.HasValue)
+                {
+                    query = query.Where(x => x.StartDate.Date <= startDateTo.Value.Date);
+                }
+
+                if (endDateFrom.HasValue)
+                {
+                    query = query.Where(x => x.EndDate.Date >= endDateFrom.Value.Date);
+                }
+
+                if (endDateTo.HasValue)
+                {
+                    query = query.Where(x => x.EndDate.Date <= endDateTo.Value.Date);
+                }
+
+                var filteredConferences = query
+                    .OrderBy(x => x.StartDate)
+                    .ThenBy(x => x.Title)
+                    .ToList();
+
+                var totalCount = filteredConferences.Count;
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
                 if (totalPages == 0)
@@ -995,8 +1081,7 @@ namespace ScientificActivityClientApp.Controllers
                     page = totalPages;
                 }
 
-                var conferences = allConferences
-                    .OrderByDescending(x => x.StartDate)
+                var conferences = filteredConferences
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
@@ -1004,6 +1089,16 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.TotalCount = totalCount;
+
+                ViewBag.SearchValue = search;
+                ViewBag.CityValue = city;
+                ViewBag.CountryValue = country;
+                ViewBag.OrganizerValue = organizer;
+                ViewBag.OnlyUpcomingValue = onlyUpcoming;
+                ViewBag.StartDateFromValue = startDateFrom?.ToString("yyyy-MM-dd");
+                ViewBag.StartDateToValue = startDateTo?.ToString("yyyy-MM-dd");
+                ViewBag.EndDateFromValue = endDateFrom?.ToString("yyyy-MM-dd");
+                ViewBag.EndDateToValue = endDateTo?.ToString("yyyy-MM-dd");
 
                 return View(conferences);
             }
@@ -1205,7 +1300,16 @@ namespace ScientificActivityClientApp.Controllers
 
         // -------------------- Гранты ------------------------------------
 
-        public IActionResult Grants(int page = 1, int? status = null)
+        [HttpGet]
+        public IActionResult Grants(
+    string? search,
+    int? status,
+    bool? onlyActive,
+    DateTime? applicationDateFrom,
+    DateTime? applicationDateTo,
+    DateTime? resultDateFrom,
+    DateTime? resultDateTo,
+    int page = 1)
         {
             if (APIClient.Researcher == null)
             {
@@ -1214,19 +1318,63 @@ namespace ScientificActivityClientApp.Controllers
 
             try
             {
-                const int pageSize = 10;
+                const int pageSize = 20;
 
                 var allGrants = APIClient.GetRequest<List<GrantViewModel>>("api/Grant/GetAllGrants")
-                               ?? new List<GrantViewModel>();
+                                ?? new List<GrantViewModel>();
+
+                IEnumerable<GrantViewModel> query = allGrants;
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var normalizedSearch = search.Trim();
+
+                    query = query.Where(x =>
+                        (!string.IsNullOrWhiteSpace(x.Title) &&
+                         x.Title.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.Organization) &&
+                         x.Organization.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.ContestNumber) &&
+                         x.ContestNumber.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)));
+                }
 
                 if (status.HasValue)
                 {
-                    allGrants = allGrants
-                        .Where(x => (int)x.Status == status.Value)
-                        .ToList();
+                    query = query.Where(x => (int)x.Status == status.Value);
                 }
 
-                var totalCount = allGrants.Count;
+                if (onlyActive == true)
+                {
+                    var today = DateTime.Today;
+                    query = query.Where(x => x.StartDate.Date >= today);
+                }
+
+                if (applicationDateFrom.HasValue)
+                {
+                    query = query.Where(x => x.StartDate.Date >= applicationDateFrom.Value.Date);
+                }
+
+                if (applicationDateTo.HasValue)
+                {
+                    query = query.Where(x => x.StartDate.Date <= applicationDateTo.Value.Date);
+                }
+
+                if (resultDateFrom.HasValue)
+                {
+                    query = query.Where(x => x.EndDate.Date >= resultDateFrom.Value.Date);
+                }
+
+                if (resultDateTo.HasValue)
+                {
+                    query = query.Where(x => x.EndDate.Date <= resultDateTo.Value.Date);
+                }
+
+                var filteredGrants = query
+                    .OrderBy(x => x.StartDate)
+                    .ThenBy(x => x.Title)
+                    .ToList();
+
+                var totalCount = filteredGrants.Count;
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
                 if (totalPages == 0)
@@ -1244,8 +1392,7 @@ namespace ScientificActivityClientApp.Controllers
                     page = totalPages;
                 }
 
-                var grants = allGrants
-                    .OrderByDescending(x => x.StartDate)
+                var grants = filteredGrants
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
@@ -1253,7 +1400,14 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.TotalCount = totalCount;
+
+                ViewBag.SearchValue = search;
                 ViewBag.SelectedStatus = status;
+                ViewBag.OnlyActiveValue = onlyActive;
+                ViewBag.ApplicationDateFromValue = applicationDateFrom?.ToString("yyyy-MM-dd");
+                ViewBag.ApplicationDateToValue = applicationDateTo?.ToString("yyyy-MM-dd");
+                ViewBag.ResultDateFromValue = resultDateFrom?.ToString("yyyy-MM-dd");
+                ViewBag.ResultDateToValue = resultDateTo?.ToString("yyyy-MM-dd");
 
                 return View(grants);
             }
@@ -1622,26 +1776,170 @@ namespace ScientificActivityClientApp.Controllers
 
         // -------------------- Публикации --------------------
 
-        public IActionResult Publications()
+        public IActionResult Publications(
+    string[] categories,
+    int[] years,
+    string sort = "year_desc",
+    string search = "")
         {
             if (APIClient.Researcher == null)
             {
-                return RedirectToAction("Enter");
+                return RedirectToAction("Enter", new { error = "Требуется авторизация" });
             }
 
-            try
-            {
-                var publications = APIClient.GetRequest<List<PublicationViewModel>>(
-                    $"api/Publication/GetPublicationsByFilter?researcherId={APIClient.Researcher.Id}");
+            var publications = APIClient.GetRequest<List<PublicationViewModel>>(
+                $"api/Publication/GetFilteredPublications?researcherId={APIClient.Researcher.Id}")
+                ?? new List<PublicationViewModel>();
 
-                return View(publications ?? new List<PublicationViewModel>());
-            }
-            catch (Exception ex)
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                _logger.LogError(ex, "Ошибка получения публикаций");
-                TempData["Error"] = ex.Message;
-                return View(new List<PublicationViewModel>());
+                publications = publications
+                    .Where(x =>
+                        (!string.IsNullOrWhiteSpace(x.Title) && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.Authors) && x.Authors.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.Keywords) && x.Keywords.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(x.JournalTitle) && x.JournalTitle.Contains(search, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
             }
+
+            if (years != null && years.Length > 0)
+            {
+                publications = publications
+                    .Where(x => years.Contains(x.Year))
+                    .ToList();
+            }
+
+            if (categories != null && categories.Length > 0)
+            {
+                publications = publications
+                    .Where(x => PublicationMatchesAnyCategory(x, categories))
+                    .ToList();
+            }
+
+            publications = sort switch
+            {
+                "year_asc" => publications.OrderBy(x => x.Year).ThenBy(x => x.Title).ToList(),
+                "citations_desc" => publications.OrderByDescending(x => x.CitationsRincCount ?? 0).ThenByDescending(x => x.Year).ToList(),
+                "citations_asc" => publications.OrderBy(x => x.CitationsRincCount ?? 0).ThenByDescending(x => x.Year).ToList(),
+                "title_asc" => publications.OrderBy(x => x.Title).ToList(),
+                "title_desc" => publications.OrderByDescending(x => x.Title).ToList(),
+                _ => publications.OrderByDescending(x => x.Year).ThenBy(x => x.Title).ToList()
+            };
+
+            ViewBag.SelectedCategories = categories?.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>();
+            ViewBag.SelectedYears = years?.ToHashSet() ?? new HashSet<int>();
+            ViewBag.Sort = sort;
+            ViewBag.Search = search;
+
+            return View(publications);
+        }
+
+        private static bool PublicationMatchesAnyCategory(PublicationViewModel publication, string[] categories)
+        {
+            foreach (var category in categories)
+            {
+                if (category == "rinc" && publication.IsInRinc)
+                {
+                    return true;
+                }
+
+                if (category == "coreRinc" && publication.IsInCoreRinc)
+                {
+                    return true;
+                }
+
+                if (category == "whiteList1" && publication.IsWhiteListLevel1)
+                {
+                    return true;
+                }
+
+                if (category == "whiteList2" && publication.IsWhiteListLevel2)
+                {
+                    return true;
+                }
+
+                if (category == "whiteList3" && publication.IsWhiteListLevel3)
+                {
+                    return true;
+                }
+
+                if (category == "whiteList4" && publication.IsWhiteListLevel4)
+                {
+                    return true;
+                }
+
+                if (category == "rsci" && publication.IsRsci)
+                {
+                    return true;
+                }
+
+                if (category == "scopusQ1" && publication.IsScopusQ1)
+                {
+                    return true;
+                }
+
+                if (category == "scopusQ2" && publication.IsScopusQ2)
+                {
+                    return true;
+                }
+
+                if (category == "scopusQ3" && publication.IsScopusQ3)
+                {
+                    return true;
+                }
+
+                if (category == "scopusQ4" && publication.IsScopusQ4)
+                {
+                    return true;
+                }
+
+                if (category == "wosQ1" && publication.IsWebOfScienceQ1)
+                {
+                    return true;
+                }
+
+                if (category == "wosQ2" && publication.IsWebOfScienceQ2)
+                {
+                    return true;
+                }
+
+                if (category == "wosQ3" && publication.IsWebOfScienceQ3)
+                {
+                    return true;
+                }
+
+                if (category == "wosQ4" && publication.IsWebOfScienceQ4)
+                {
+                    return true;
+                }
+
+                if (category == "wosNoQuartile" && publication.IsWebOfScienceNoQuartile)
+                {
+                    return true;
+                }
+
+                if (category == "vak" && publication.IsVak)
+                {
+                    return true;
+                }
+
+                if (category == "vak1" && publication.IsVakCategory1)
+                {
+                    return true;
+                }
+
+                if (category == "vak2" && publication.IsVakCategory2)
+                {
+                    return true;
+                }
+
+                if (category == "vak3" && publication.IsVakCategory3)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         [HttpGet]
@@ -1782,6 +2080,59 @@ namespace ScientificActivityClientApp.Controllers
                 TempData["Error"] = ex.Message;
                 return RedirectToAction("Publications");
             }
+        }
+
+        [HttpPost]
+        public IActionResult ImportELibraryPublications()
+        {
+            try
+            {
+                if (APIClient.Researcher == null)
+                {
+                    return RedirectToAction("Enter");
+                }
+
+                if (string.IsNullOrWhiteSpace(APIClient.Researcher.ELibraryAuthorId))
+                {
+                    ViewBag.Error = "Сначала укажите и привяжите AuthorId eLibrary";
+                    FillProfileViewBags();
+                    return View("Profile", APIClient.Researcher);
+                }
+
+                APIClient.PostRequest("api/ELibrary/ImportAuthorPublications", new ELibraryImportBindingModel
+                {
+                    ResearcherId = APIClient.Researcher.Id,
+                    ELibraryAuthorId = APIClient.Researcher.ELibraryAuthorId
+                });
+
+                UpdateResearcherProfile();
+                FillProfileViewBags();
+
+                ViewBag.Message = "Импорт публикаций eLibrary завершён";
+
+                return View("Profile", APIClient.Researcher);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка импорта публикаций eLibrary");
+                ViewBag.Error = ex.Message;
+                FillProfileViewBags();
+                return View("Profile", APIClient.Researcher);
+            }
+        }
+
+        public IActionResult MyPublications()
+        {
+            if (APIClient.Researcher == null)
+            {
+                return RedirectToAction("Enter", new { error = "Требуется авторизация" });
+            }
+
+            var publications = APIClient.GetRequest<List<PublicationViewModel>>(
+                $"api/Publication/GetFilteredPublications?researcherId={APIClient.Researcher.Id}")
+                ?? new List<PublicationViewModel>();
+
+            return View(publications);
         }
 
         [HttpPost]

@@ -73,17 +73,36 @@ namespace ScientificActivityRestApi.Controllers
             }
         }
 
-        //[HttpPost]
-        //public IActionResult ImportAuthorPublications([FromBody] ELibraryImportBindingModel model)
-        //{
-        //    try
-        //    {
-        //        return Ok(_logic.ImportAuthorPublications(model));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
+        [HttpGet]
+        public IActionResult GetStoredAuthorProfile(int researcherId)
+        {
+            try
+            {
+                var result = _logic.GetStoredAuthorProfile(researcherId);
+                if (result == null)
+                {
+                    return NotFound("Импортированный профиль eLibrary не найден");
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public IActionResult ImportAuthorPublications([FromBody] ELibraryImportBindingModel model)
+        {
+            try
+            {
+                return Ok(_logic.ImportAuthorPublications(model));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

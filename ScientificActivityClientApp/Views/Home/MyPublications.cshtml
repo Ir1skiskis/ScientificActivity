@@ -1,0 +1,104 @@
+﻿@model List<ScientificActivityContracts.ViewModels.PublicationViewModel>
+
+@{
+    ViewData["Title"] = "Мои публикации";
+}
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header text-center">
+            <h4>Мои публикации</h4>
+        </div>
+
+        <div class="card-body">
+            @if (Model == null || !Model.Any())
+            {
+                <div class="alert alert-light border">
+                    Публикации пока не импортированы.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Год</th>
+                                <th>Название</th>
+                                <th>Авторы</th>
+                                <th>Журнал</th>
+                                <th>DOI</th>
+                                <th>Цит.</th>
+                                <th>Категории</th>
+                                <th>Ссылка</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var publication in Model.OrderByDescending(x => x.Year).ThenBy(x => x.Title))
+                            {
+                                <tr>
+                                    <td>@publication.Year</td>
+                                    <td>@publication.Title</td>
+                                    <td>@publication.Authors</td>
+                                    <td>@(publication.JournalTitle ?? "Не указано")</td>
+                                    <td>@(publication.Doi ?? "—")</td>
+                                    <td>@(publication.CitationsRincCount?.ToString() ?? "0")</td>
+                                    <td>
+                                        @if (publication.IsInRinc)
+                                        {
+                                            <span class="badge bg-primary me-1 mb-1">РИНЦ</span>
+                                        }
+                                        @if (publication.IsInCoreRinc)
+                                        {
+                                            <span class="badge bg-success me-1 mb-1">Ядро РИНЦ</span>
+                                        }
+                                        @if (publication.IsRsci)
+                                        {
+                                            <span class="badge bg-info me-1 mb-1">RSCI</span>
+                                        }
+                                        @if (publication.IsVak)
+                                        {
+                                            <span class="badge bg-warning text-dark me-1 mb-1">ВАК</span>
+                                        }
+                                        @if (publication.IsWhiteListLevel1)
+                                        {
+                                            <span class="badge bg-dark me-1 mb-1">БС-1</span>
+                                        }
+                                        @if (publication.IsWhiteListLevel2)
+                                        {
+                                            <span class="badge bg-dark me-1 mb-1">БС-2</span>
+                                        }
+                                        @if (publication.IsWhiteListLevel3)
+                                        {
+                                            <span class="badge bg-dark me-1 mb-1">БС-3</span>
+                                        }
+                                        @if (publication.IsWhiteListLevel4)
+                                        {
+                                            <span class="badge bg-dark me-1 mb-1">БС-4</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(publication.Url))
+                                        {
+                                            <a href="@publication.Url" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                Открыть
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span>—</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <div class="mt-3">
+                <a asp-action="Profile" class="btn btn-secondary">Вернуться в профиль</a>
+            </div>
+        </div>
+    </div>
+</div>

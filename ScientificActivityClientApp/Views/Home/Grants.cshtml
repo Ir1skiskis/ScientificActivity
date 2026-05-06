@@ -3,10 +3,20 @@
 
 @{
     ViewData["Title"] = "Гранты";
+
     int currentPage = ViewBag.CurrentPage ?? 1;
     int totalPages = ViewBag.TotalPages ?? 1;
     int totalCount = ViewBag.TotalCount ?? 0;
+
     int? selectedStatus = ViewBag.SelectedStatus as int?;
+    string? searchValue = ViewBag.SearchValue as string;
+
+    bool onlyActiveChecked = (ViewBag.OnlyActiveValue as bool?) == true;
+
+    string? applicationDateFromValue = ViewBag.ApplicationDateFromValue as string;
+    string? applicationDateToValue = ViewBag.ApplicationDateToValue as string;
+    string? resultDateFromValue = ViewBag.ResultDateFromValue as string;
+    string? resultDateToValue = ViewBag.ResultDateToValue as string;
 }
 
 <h2 class="mb-4">Гранты</h2>
@@ -24,30 +34,119 @@
 @if (APIClient.Researcher?.Role == UserRole.Администратор)
 {
     <div class="mb-3 d-flex gap-2">
-        <a asp-action="CreateGrant" class="btn btn-primary">Добавить грант</a>
-
         <form method="post" asp-action="ImportGrants">
             <button type="submit" class="btn btn-success">Импортировать гранты</button>
         </form>
     </div>
 }
 
-<form method="get" asp-action="Grants" class="row g-2 mb-3">
-    <div class="col-md-4">
-        <select name="status" class="form-select">
-            <option value="">Все статусы</option>
-            <option value="1" selected="@(selectedStatus == 1)">Открыт</option>
-            <option value="4" selected="@(selectedStatus == 4)">В экспертизе</option>
-            <option value="5" selected="@(selectedStatus == 5)">Завершен</option>
-            <option value="2" selected="@(selectedStatus == 2)">Закрыт</option>
-            <option value="3" selected="@(selectedStatus == 3)">В архиве</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <button type="submit" class="btn btn-outline-primary w-100">Фильтр</button>
-    </div>
-    <div class="col-md-2">
-        <a asp-action="Grants" class="btn btn-outline-secondary w-100">Сбросить</a>
+<form method="get" asp-action="Grants" class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Поиск</label>
+                <input type="text"
+                       name="search"
+                       value="@searchValue"
+                       class="form-control"
+                       placeholder="Название, организация, № конкурса" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Статус</label>
+                <select name="status" class="form-select">
+                    <option value="">Все статусы</option>
+                    @if (selectedStatus == 1)
+                    {
+                        <option value="1" selected>Открыт</option>
+                    }
+                    else
+                    {
+                        <option value="1">Открыт</option>
+                    }
+
+                    @if (selectedStatus == 4)
+                    {
+                        <option value="4" selected>В экспертизе</option>
+                    }
+                    else
+                    {
+                        <option value="4">В экспертизе</option>
+                    }
+
+                    @if (selectedStatus == 5)
+                    {
+                        <option value="5" selected>Завершен</option>
+                    }
+                    else
+                    {
+                        <option value="5">Завершен</option>
+                    }
+
+                    @if (selectedStatus == 2)
+                    {
+                        <option value="2" selected>Закрыт</option>
+                    }
+                    else
+                    {
+                        <option value="2">Закрыт</option>
+                    }
+
+                    @if (selectedStatus == 3)
+                    {
+                        <option value="3" selected>В архиве</option>
+                    }
+                    else
+                    {
+                        <option value="3">В архиве</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    @if (onlyActiveChecked)
+                    {
+                        <input class="form-check-input" type="checkbox" name="onlyActive" value="true" checked />
+                    }
+                    else
+                    {
+                        <input class="form-check-input" type="checkbox" name="onlyActive" value="true" />
+                    }
+                    <label class="form-check-label">Только актуальные</label>
+                </div>
+            </div>
+
+            <div class="col-md-3"></div>
+
+            <div class="col-md-3">
+                <label class="form-label">Приём заявок: от</label>
+                <input type="date" name="applicationDateFrom" value="@applicationDateFromValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Приём заявок: до</label>
+                <input type="date" name="applicationDateTo" value="@applicationDateToValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Итоги: от</label>
+                <input type="date" name="resultDateFrom" value="@resultDateFromValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Итоги: до</label>
+                <input type="date" name="resultDateTo" value="@resultDateToValue" class="form-control" />
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">Применить</button>
+            </div>
+
+            <div class="col-md-2">
+                <a asp-action="Grants" class="btn btn-outline-secondary w-100">Сбросить</a>
+            </div>
+        </div>
     </div>
 </form>
 
@@ -59,7 +158,7 @@
 }
 else
 {
-    <table class="table table-bordered table-striped">
+    <table class="table table-bordered table-striped align-middle">
         <thead>
             <tr>
                 <th>№ конкурса</th>
@@ -78,13 +177,27 @@ else
         <tbody>
             @foreach (var item in Model)
             {
+                var applicationDeadlinePassed = item.StartDate.Date < DateTime.Today;
+                var applicationCssClass = applicationDeadlinePassed ? "text-danger fw-semibold" : "text-success fw-semibold";
+
+                var resultDatePassed = item.EndDate.Date < DateTime.Today;
+                var resultCssClass = resultDatePassed ? "text-danger" : "text-success";
+
                 <tr>
                     <td>@item.ContestNumber</td>
                     <td>@item.Title</td>
                     <td>@item.Organization</td>
-                    <td>@item.StartDate.ToString("dd.MM.yyyy")</td>
-                    <td>@item.EndDate.ToString("dd.MM.yyyy")</td>
+
+                    <td class="@applicationCssClass">
+                        @item.StartDate.ToString("dd.MM.yyyy")
+                    </td>
+
+                    <td class="@resultCssClass">
+                        @item.EndDate.ToString("dd.MM.yyyy")
+                    </td>
+
                     <td>@item.Status</td>
+
                     <td>
                         @if (!string.IsNullOrWhiteSpace(item.Url))
                         {
@@ -101,7 +214,8 @@ else
                         <td>
                             <div class="d-flex gap-2">
                                 <a asp-action="UpdateGrant" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Изменить</a>
-                                <form method="post" asp-action="DeleteGrant">
+
+                                <form method="post" asp-action="DeleteGrant" onsubmit="return confirm('Удалить грант?');">
                                     <input type="hidden" name="id" value="@item.Id" />
                                     <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
                                 </form>
@@ -113,22 +227,91 @@ else
         </tbody>
     </table>
 
-    <nav aria-label="Пагинация грантов">
-        <ul class="pagination justify-content-center">
-            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
-                <a class="page-link" asp-action="Grants" asp-route-page="@(currentPage - 1)" asp-route-status="@selectedStatus">Назад</a>
-            </li>
+    @if (totalPages > 1)
+    {
+        var startPage = Math.Max(1, currentPage - 2);
+        var endPage = Math.Min(totalPages, currentPage + 2);
 
-            @for (int i = 1; i <= totalPages; i++)
-            {
-                <li class="page-item @(i == currentPage ? "active" : "")">
-                    <a class="page-link" asp-action="Grants" asp-route-page="@i" asp-route-status="@selectedStatus">@i</a>
+        <nav class="d-flex justify-content-center mt-4" aria-label="Пагинация грантов">
+            <ul class="pagination">
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Grants"
+                       asp-route-page="1"
+                       asp-route-search="@searchValue"
+                       asp-route-status="@selectedStatus"
+                       asp-route-onlyActive="@onlyActiveChecked"
+                       asp-route-applicationDateFrom="@applicationDateFromValue"
+                       asp-route-applicationDateTo="@applicationDateToValue"
+                       asp-route-resultDateFrom="@resultDateFromValue"
+                       asp-route-resultDateTo="@resultDateToValue">
+                        «
+                    </a>
                 </li>
-            }
 
-            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
-                <a class="page-link" asp-action="Grants" asp-route-page="@(currentPage + 1)" asp-route-status="@selectedStatus">Вперёд</a>
-            </li>
-        </ul>
-    </nav>
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Grants"
+                       asp-route-page="@(currentPage - 1)"
+                       asp-route-search="@searchValue"
+                       asp-route-status="@selectedStatus"
+                       asp-route-onlyActive="@onlyActiveChecked"
+                       asp-route-applicationDateFrom="@applicationDateFromValue"
+                       asp-route-applicationDateTo="@applicationDateToValue"
+                       asp-route-resultDateFrom="@resultDateFromValue"
+                       asp-route-resultDateTo="@resultDateToValue">
+                        Назад
+                    </a>
+                </li>
+
+                @for (int i = startPage; i <= endPage; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link"
+                           asp-action="Grants"
+                           asp-route-page="@i"
+                           asp-route-search="@searchValue"
+                           asp-route-status="@selectedStatus"
+                           asp-route-onlyActive="@onlyActiveChecked"
+                           asp-route-applicationDateFrom="@applicationDateFromValue"
+                           asp-route-applicationDateTo="@applicationDateToValue"
+                           asp-route-resultDateFrom="@resultDateFromValue"
+                           asp-route-resultDateTo="@resultDateToValue">
+                            @i
+                        </a>
+                    </li>
+                }
+
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Grants"
+                       asp-route-page="@(currentPage + 1)"
+                       asp-route-search="@searchValue"
+                       asp-route-status="@selectedStatus"
+                       asp-route-onlyActive="@onlyActiveChecked"
+                       asp-route-applicationDateFrom="@applicationDateFromValue"
+                       asp-route-applicationDateTo="@applicationDateToValue"
+                       asp-route-resultDateFrom="@resultDateFromValue"
+                       asp-route-resultDateTo="@resultDateToValue">
+                        Вперёд
+                    </a>
+                </li>
+
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Grants"
+                       asp-route-page="@totalPages"
+                       asp-route-search="@searchValue"
+                       asp-route-status="@selectedStatus"
+                       asp-route-onlyActive="@onlyActiveChecked"
+                       asp-route-applicationDateFrom="@applicationDateFromValue"
+                       asp-route-applicationDateTo="@applicationDateToValue"
+                       asp-route-resultDateFrom="@resultDateFromValue"
+                       asp-route-resultDateTo="@resultDateToValue">
+                        »
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
 }

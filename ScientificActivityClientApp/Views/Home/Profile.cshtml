@@ -200,6 +200,13 @@
                         <button type="submit" class="btn btn-warning">Импортировать профиль в систему</button>
                     </div>
                 </form>
+                <form method="post" asp-action="ImportELibraryPublications" class="mb-4">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-info">
+                            Импортировать публикации из eLibrary
+                        </button>
+                    </div>
+                </form>
 
                 @if (eLibraryProfile != null)
                 {

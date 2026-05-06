@@ -72,6 +72,10 @@ namespace ScientificActivityDatabaseImplement.Implements
             {
                 query = query.Where(x => x.Keywords != null && x.Keywords.Contains(model.Keywords));
             }
+            if (!string.IsNullOrWhiteSpace(model.ELibraryId))
+            {
+                query = query.Where(x => x.ELibraryId == model.ELibraryId);
+            }
 
             return query
                 .AsEnumerable()
@@ -100,6 +104,27 @@ namespace ScientificActivityDatabaseImplement.Implements
                     .Include(x => x.Journal)
                     .Include(x => x.Conference)
                     .FirstOrDefault(x => x.Doi == model.Doi);
+            }
+            else if (model.ResearcherId.HasValue && !string.IsNullOrWhiteSpace(model.ELibraryId))
+            {
+                element = context.Publications
+                    .Include(x => x.Researcher)
+                    .Include(x => x.Journal)
+                    .Include(x => x.Conference)
+                    .FirstOrDefault(x => x.ResearcherId == model.ResearcherId.Value &&
+                                         x.ELibraryId == model.ELibraryId);
+            }
+            else if (model.ResearcherId.HasValue &&
+                     !string.IsNullOrWhiteSpace(model.Title) &&
+                     model.Year.HasValue)
+            {
+                element = context.Publications
+                    .Include(x => x.Researcher)
+                    .Include(x => x.Journal)
+                    .Include(x => x.Conference)
+                    .FirstOrDefault(x => x.ResearcherId == model.ResearcherId.Value &&
+                                         x.Title == model.Title &&
+                                         x.Year == model.Year.Value);
             }
 
             return element?.GetViewModel;

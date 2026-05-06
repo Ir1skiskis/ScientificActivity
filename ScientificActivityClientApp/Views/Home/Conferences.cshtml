@@ -3,9 +3,22 @@
 
 @{
     ViewData["Title"] = "Конференции";
+
     int currentPage = ViewBag.CurrentPage ?? 1;
     int totalPages = ViewBag.TotalPages ?? 1;
     int totalCount = ViewBag.TotalCount ?? 0;
+
+    string? searchValue = ViewBag.SearchValue as string;
+    string? cityValue = ViewBag.CityValue as string;
+    string? countryValue = ViewBag.CountryValue as string;
+    string? organizerValue = ViewBag.OrganizerValue as string;
+
+    bool onlyUpcomingChecked = (ViewBag.OnlyUpcomingValue as bool?) == true;
+
+    string? startDateFromValue = ViewBag.StartDateFromValue as string;
+    string? startDateToValue = ViewBag.StartDateToValue as string;
+    string? endDateFromValue = ViewBag.EndDateFromValue as string;
+    string? endDateToValue = ViewBag.EndDateToValue as string;
 }
 
 <h2 class="mb-4">Конференции</h2>
@@ -14,6 +27,7 @@
 {
     <div class="alert alert-success">@TempData["Message"]</div>
 }
+
 @if (TempData["Error"] != null)
 {
     <div class="alert alert-danger">@TempData["Error"]</div>
@@ -22,23 +36,105 @@
 @if (APIClient.Researcher?.Role == UserRole.Администратор)
 {
     <div class="mb-3 d-flex gap-2">
-        <a asp-action="CreateConference" class="btn btn-primary">Добавить конференцию</a>
-
         <form method="post" asp-action="ImportConferences">
             <button type="submit" class="btn btn-success">Импортировать конференции</button>
         </form>
     </div>
 }
 
+<form method="get" asp-action="Conferences" class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Поиск</label>
+                <input type="text"
+                       name="search"
+                       value="@searchValue"
+                       class="form-control"
+                       placeholder="Название, описание, тематика" />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Город</label>
+                <input type="text"
+                       name="city"
+                       value="@cityValue"
+                       class="form-control"
+                       placeholder="Город" />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Страна</label>
+                <input type="text"
+                       name="country"
+                       value="@countryValue"
+                       class="form-control"
+                       placeholder="Страна" />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Организатор</label>
+                <input type="text"
+                       name="organizer"
+                       value="@organizerValue"
+                       class="form-control"
+                       placeholder="Организатор" />
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    @if (onlyUpcomingChecked)
+                    {
+                        <input class="form-check-input" type="checkbox" name="onlyUpcoming" value="true" checked />
+                    }
+                    else
+                    {
+                        <input class="form-check-input" type="checkbox" name="onlyUpcoming" value="true" />
+                    }
+                    <label class="form-check-label">Только предстоящие</label>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Дата начала: от</label>
+                <input type="date" name="startDateFrom" value="@startDateFromValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Дата начала: до</label>
+                <input type="date" name="startDateTo" value="@startDateToValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Дата окончания: от</label>
+                <input type="date" name="endDateFrom" value="@endDateFromValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Дата окончания: до</label>
+                <input type="date" name="endDateTo" value="@endDateToValue" class="form-control" />
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">Применить</button>
+            </div>
+
+            <div class="col-md-2">
+                <a asp-action="Conferences" class="btn btn-outline-secondary w-100">Сбросить</a>
+            </div>
+        </div>
+    </div>
+</form>
+
 <p>Всего записей: <strong>@totalCount</strong></p>
 
 @if (Model.Count == 0)
 {
-    <div class="alert alert-info">Конференции пока не загружены.</div>
+    <div class="alert alert-info">Конференции не найдены.</div>
 }
 else
 {
-    <table class="table table-bordered table-striped">
+    <table class="table table-bordered table-striped align-middle">
         <thead>
             <tr>
                 <th>Название</th>
@@ -57,13 +153,25 @@ else
         <tbody>
             @foreach (var item in Model)
             {
+                var isPastConference = item.EndDate.Date < DateTime.Today;
+                var startCssClass = item.StartDate.Date >= DateTime.Today ? "text-success fw-semibold" : "text-danger fw-semibold";
+                var endCssClass = isPastConference ? "text-danger" : "text-success";
+
                 <tr>
                     <td>@item.Title</td>
-                    <td>@item.StartDate.ToString("dd.MM.yyyy")</td>
-                    <td>@item.EndDate.ToString("dd.MM.yyyy")</td>
-                    <td>@item.City</td>
-                    <td>@item.Country</td>
-                    <td>@item.Organizer</td>
+
+                    <td class="@startCssClass">
+                        @item.StartDate.ToString("dd.MM.yyyy")
+                    </td>
+
+                    <td class="@endCssClass">
+                        @item.EndDate.ToString("dd.MM.yyyy")
+                    </td>
+
+                    <td>@(string.IsNullOrWhiteSpace(item.City) ? "-" : item.City)</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.Country) ? "-" : item.Country)</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.Organizer) ? "-" : item.Organizer)</td>
+
                     <td>
                         @if (!string.IsNullOrWhiteSpace(item.Url))
                         {
@@ -80,7 +188,8 @@ else
                         <td>
                             <div class="d-flex gap-2">
                                 <a asp-action="UpdateConference" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Изменить</a>
-                                <form method="post" asp-action="DeleteConference">
+
+                                <form method="post" asp-action="DeleteConference" onsubmit="return confirm('Удалить конференцию?');">
                                     <input type="hidden" name="id" value="@item.Id" />
                                     <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
                                 </form>
@@ -92,22 +201,101 @@ else
         </tbody>
     </table>
 
-    <nav aria-label="Пагинация конференций">
-        <ul class="pagination justify-content-center">
-            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
-                <a class="page-link" asp-action="Conferences" asp-route-page="@(currentPage - 1)">Назад</a>
-            </li>
+    @if (totalPages > 1)
+    {
+        var startPage = Math.Max(1, currentPage - 2);
+        var endPage = Math.Min(totalPages, currentPage + 2);
 
-            @for (int i = 1; i <= totalPages; i++)
-            {
-                <li class="page-item @(i == currentPage ? "active" : "")">
-                    <a class="page-link" asp-action="Conferences" asp-route-page="@i">@i</a>
+        <nav class="d-flex justify-content-center mt-4" aria-label="Пагинация конференций">
+            <ul class="pagination">
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Conferences"
+                       asp-route-page="1"
+                       asp-route-search="@searchValue"
+                       asp-route-city="@cityValue"
+                       asp-route-country="@countryValue"
+                       asp-route-organizer="@organizerValue"
+                       asp-route-onlyUpcoming="@onlyUpcomingChecked"
+                       asp-route-startDateFrom="@startDateFromValue"
+                       asp-route-startDateTo="@startDateToValue"
+                       asp-route-endDateFrom="@endDateFromValue"
+                       asp-route-endDateTo="@endDateToValue">
+                        «
+                    </a>
                 </li>
-            }
 
-            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
-                <a class="page-link" asp-action="Conferences" asp-route-page="@(currentPage + 1)">Вперёд</a>
-            </li>
-        </ul>
-    </nav>
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Conferences"
+                       asp-route-page="@(currentPage - 1)"
+                       asp-route-search="@searchValue"
+                       asp-route-city="@cityValue"
+                       asp-route-country="@countryValue"
+                       asp-route-organizer="@organizerValue"
+                       asp-route-onlyUpcoming="@onlyUpcomingChecked"
+                       asp-route-startDateFrom="@startDateFromValue"
+                       asp-route-startDateTo="@startDateToValue"
+                       asp-route-endDateFrom="@endDateFromValue"
+                       asp-route-endDateTo="@endDateToValue">
+                        Назад
+                    </a>
+                </li>
+
+                @for (int i = startPage; i <= endPage; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link"
+                           asp-action="Conferences"
+                           asp-route-page="@i"
+                           asp-route-search="@searchValue"
+                           asp-route-city="@cityValue"
+                           asp-route-country="@countryValue"
+                           asp-route-organizer="@organizerValue"
+                           asp-route-onlyUpcoming="@onlyUpcomingChecked"
+                           asp-route-startDateFrom="@startDateFromValue"
+                           asp-route-startDateTo="@startDateToValue"
+                           asp-route-endDateFrom="@endDateFromValue"
+                           asp-route-endDateTo="@endDateToValue">
+                            @i
+                        </a>
+                    </li>
+                }
+
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Conferences"
+                       asp-route-page="@(currentPage + 1)"
+                       asp-route-search="@searchValue"
+                       asp-route-city="@cityValue"
+                       asp-route-country="@countryValue"
+                       asp-route-organizer="@organizerValue"
+                       asp-route-onlyUpcoming="@onlyUpcomingChecked"
+                       asp-route-startDateFrom="@startDateFromValue"
+                       asp-route-startDateTo="@startDateToValue"
+                       asp-route-endDateFrom="@endDateFromValue"
+                       asp-route-endDateTo="@endDateToValue">
+                        Вперёд
+                    </a>
+                </li>
+
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-action="Conferences"
+                       asp-route-page="@totalPages"
+                       asp-route-search="@searchValue"
+                       asp-route-city="@cityValue"
+                       asp-route-country="@countryValue"
+                       asp-route-organizer="@organizerValue"
+                       asp-route-onlyUpcoming="@onlyUpcomingChecked"
+                       asp-route-startDateFrom="@startDateFromValue"
+                       asp-route-startDateTo="@startDateToValue"
+                       asp-route-endDateFrom="@endDateFromValue"
+                       asp-route-endDateTo="@endDateToValue">
+                        »
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
 }

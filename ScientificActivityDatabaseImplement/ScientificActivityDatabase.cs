@@ -33,6 +33,7 @@ namespace ScientificActivityDatabaseImplement
         public DbSet<ConferenceTag> ConferenceTags { get; set; }
         public DbSet<GrantTag> GrantTags { get; set; }
         public DbSet<JournalTag> JournalTags { get; set; }
+        public virtual DbSet<ELibraryAuthorProfile> ELibraryAuthorProfiles { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -123,6 +124,8 @@ namespace ScientificActivityDatabaseImplement
                     .WithMany(x => x.Publications)
                     .HasForeignKey(x => x.ConferenceId)
                     .OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(x => x.ELibraryId);
+                entity.HasIndex(x => new { x.ResearcherId, x.ELibraryId }).IsUnique();
             });
 
             modelBuilder.Entity<Journal>(entity =>
@@ -254,6 +257,31 @@ namespace ScientificActivityDatabaseImplement
             modelBuilder.Entity<JournalTag>()
                 .HasIndex(x => new { x.JournalId, x.TagId })
                 .IsUnique();
+
+            modelBuilder.Entity<ELibraryAuthorProfile>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.AuthorId).IsRequired();
+                entity.Property(x => x.FullName).IsRequired();
+
+                entity.HasIndex(x => x.ResearcherId).IsUnique();
+                entity.HasIndex(x => x.AuthorId);
+
+                entity.Property(x => x.AverageCitationsPerPublication)
+                    .HasPrecision(18, 2);
+
+                entity.Property(x => x.AverageWeightedImpactFactorPublished)
+                    .HasPrecision(18, 2);
+
+                entity.Property(x => x.AverageWeightedImpactFactorCited)
+                    .HasPrecision(18, 2);
+
+                entity.HasOne(x => x.Researcher)
+                    .WithOne()
+                    .HasForeignKey<ELibraryAuthorProfile>(x => x.ResearcherId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }

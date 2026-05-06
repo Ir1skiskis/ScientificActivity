@@ -22,6 +22,9 @@ namespace ScientificActivityClientApp
             }
 
             _httpClient.BaseAddress = new Uri(apiUrl);
+
+            _httpClient.Timeout = TimeSpan.FromHours(3);
+
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));

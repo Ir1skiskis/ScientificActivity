@@ -54,5 +54,40 @@ namespace ScientificActivityContracts.ViewModels
 
         [DisplayName("Конференция")]
         public string? ConferenceTitle { get; set; }
+
+        public string? ELibraryId { get; set; }
+
+        public int? CitationsRincCount { get; set; }
+
+        public bool IsInRinc { get; set; }
+        public bool IsInCoreRinc { get; set; }
+
+        public bool IsWhiteListLevel1 { get; set; }
+        public bool IsWhiteListLevel2 { get; set; }
+        public bool IsWhiteListLevel3 { get; set; }
+        public bool IsWhiteListLevel4 { get; set; }
+
+        public bool IsRsci { get; set; }
+
+        public bool IsScopusQ1 { get; set; }
+        public bool IsScopusQ2 { get; set; }
+        public bool IsScopusQ3 { get; set; }
+        public bool IsScopusQ4 { get; set; }
+
+        public bool IsWebOfScienceQ1 { get; set; }
+        public bool IsWebOfScienceQ2 { get; set; }
+        public bool IsWebOfScienceQ3 { get; set; }
+        public bool IsWebOfScienceQ4 { get; set; }
+        public bool IsWebOfScienceNoQuartile { get; set; }
+
+        public bool IsVak { get; set; }
+        public bool IsVakCategory1 { get; set; }
+        public bool IsVakCategory2 { get; set; }
+        public bool IsVakCategory3 { get; set; }
+
+        public string? RubricOecd { get; set; }
+        public string? RubricAsjc { get; set; }
+        public string? RubricGrnti { get; set; }
+        public string? VakSpecialty { get; set; }
     }
 }

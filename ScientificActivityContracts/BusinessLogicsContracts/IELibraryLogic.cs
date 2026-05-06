@@ -11,9 +11,15 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
     public interface IELibraryLogic
     {
         List<ELibraryAuthorSearchViewModel> SearchAuthors(ELibraryAuthorSearchBindingModel model);
+
         ELibraryAuthorProfileViewModel? GetAuthorProfile(string authorId);
+
+        ELibraryAuthorProfileViewModel? GetStoredAuthorProfile(int researcherId);
+
         bool BindAuthorToResearcher(ELibraryBindAuthorBindingModel model);
+
         bool ImportAuthorProfile(ELibraryImportBindingModel model);
-        //int ImportAuthorPublications(ELibraryImportBindingModel model);
+
+        int ImportAuthorPublications(ELibraryImportBindingModel model);
     }
 }

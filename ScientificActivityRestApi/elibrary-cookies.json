@@ -1,0 +1,37 @@
+﻿[
+  {
+    "Name": "SCookieGUID",
+    "Value": "C0587F51%2D303E%2D4111%2D8E90%2DB752FEC4562D",
+    "Domain": ".elibrary.ru",
+    "Path": "/",
+    "Expiry": null
+  },
+  {
+    "Name": "SUserID",
+    "Value": "689323048",
+    "Domain": ".elibrary.ru",
+    "Path": "/",
+    "Expiry": null
+  },
+  {
+    "Name": "_ym_d",
+    "Value": "1777893454",
+    "Domain": ".elibrary.ru",
+    "Path": "/",
+    "Expiry": null
+  },
+  {
+    "Name": "_ym_isad",
+    "Value": "2",
+    "Domain": ".elibrary.ru",
+    "Path": "/",
+    "Expiry": null
+  },
+  {
+    "Name": "_ym_uid",
+    "Value": "1777893454734953207",
+    "Domain": ".elibrary.ru",
+    "Path": "/",
+    "Expiry": null
+  }
+]

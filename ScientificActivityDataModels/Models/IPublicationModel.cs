@@ -27,5 +27,40 @@ namespace ScientificActivityDataModels.Models
 
         string? Keywords { get; }
         string? Annotation { get; }
+
+        string? ELibraryId { get; }
+
+        int? CitationsRincCount { get; }
+
+        bool IsInRinc { get; }
+        bool IsInCoreRinc { get; }
+
+        bool IsWhiteListLevel1 { get; }
+        bool IsWhiteListLevel2 { get; }
+        bool IsWhiteListLevel3 { get; }
+        bool IsWhiteListLevel4 { get; }
+
+        bool IsRsci { get; }
+
+        bool IsScopusQ1 { get; }
+        bool IsScopusQ2 { get; }
+        bool IsScopusQ3 { get; }
+        bool IsScopusQ4 { get; }
+
+        bool IsWebOfScienceQ1 { get; }
+        bool IsWebOfScienceQ2 { get; }
+        bool IsWebOfScienceQ3 { get; }
+        bool IsWebOfScienceQ4 { get; }
+        bool IsWebOfScienceNoQuartile { get; }
+
+        bool IsVak { get; }
+        bool IsVakCategory1 { get; }
+        bool IsVakCategory2 { get; }
+        bool IsVakCategory3 { get; }
+
+        string? RubricOecd { get; }
+        string? RubricAsjc { get; }
+        string? RubricGrnti { get; }
+        string? VakSpecialty { get; }
     }
 }

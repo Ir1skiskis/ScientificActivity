@@ -26,5 +26,7 @@ namespace ScientificActivityContracts.SearchModels
         public string? Doi { get; set; }
 
         public string? Keywords { get; set; }
+
+        public string? ELibraryId { get; set; }
     }
 }

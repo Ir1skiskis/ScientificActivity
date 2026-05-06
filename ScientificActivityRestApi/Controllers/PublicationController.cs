@@ -35,6 +35,22 @@ namespace ScientificActivityRestApi.Controllers
         }
 
         [HttpGet]
+        public IActionResult GetFilteredPublications(int researcherId)
+        {
+            try
+            {
+                return Ok(_publicationLogic.ReadList(new PublicationSearchModel
+                {
+                    ResearcherId = researcherId
+                }));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet]
         public IActionResult GetPublicationsByFilter(
             int? id,
             int? researcherId,

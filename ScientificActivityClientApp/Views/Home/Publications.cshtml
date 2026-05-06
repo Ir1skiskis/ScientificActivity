@@ -1,62 +1,479 @@
-﻿@model List<PublicationViewModel>
+﻿@model List<ScientificActivityContracts.ViewModels.PublicationViewModel>
 
 @{
     ViewData["Title"] = "Публикации";
+
+    var selectedCategories = ViewBag.SelectedCategories as HashSet<string> ?? new HashSet<string>();
+    var selectedYears = ViewBag.SelectedYears as HashSet<int> ?? new HashSet<int>();
+    var sort = ViewBag.Sort as string ?? "year_desc";
+    var search = ViewBag.Search as string ?? "";
+
+    var allYears = Model
+        .Select(x => x.Year)
+        .Distinct()
+        .OrderByDescending(x => x)
+        .ToList();
+
+    int CountBy(Func<ScientificActivityContracts.ViewModels.PublicationViewModel, bool> predicate)
+    {
+        return Model.Count(predicate);
+    }
 }
 
-<h2 class="mb-4">Мои публикации</h2>
+<div class="container-fluid mt-4">
+    <div class="card">
+        <div class="card-header text-center">
+            <h4>Публикации исследователя</h4>
+        </div>
 
-@if (TempData["Message"] != null)
-{
-    <div class="alert alert-success">@TempData["Message"]</div>
-}
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-3 mb-4">
+                    <form method="get" asp-action="Publications">
+                        <div class="card border-secondary">
+                            <div class="card-header">
+                                <strong>Фильтры</strong>
+                            </div>
 
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Поиск</label>
+                                    <input type="text"
+                                           name="search"
+                                           value="@search"
+                                           class="form-control"
+                                           placeholder="Название, автор, журнал, ключевые слова" />
+                                </div>
 
-<div class="mb-3">
-    <a asp-action="CreatePublication" class="btn btn-primary">Добавить публикацию</a>
-</div>
+                                <div class="mb-3">
+                                    <label class="form-label">Сортировка</label>
+                                    <select name="sort" class="form-select">
+                                        <option value="year_desc" selected="@(sort == "year_desc")">Год: по убыванию</option>
+                                        <option value="year_asc" selected="@(sort == "year_asc")">Год: по возрастанию</option>
+                                        <option value="citations_desc" selected="@(sort == "citations_desc")">Цитирования: по убыванию</option>
+                                        <option value="citations_asc" selected="@(sort == "citations_asc")">Цитирования: по возрастанию</option>
+                                        <option value="title_asc" selected="@(sort == "title_asc")">Название: А-Я</option>
+                                        <option value="title_desc" selected="@(sort == "title_desc")">Название: Я-А</option>
+                                    </select>
+                                </div>
 
-@if (Model.Count == 0)
-{
-    <div class="alert alert-info">Публикации пока не добавлены.</div>
-}
-else
-{
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Название</th>
-                <th>Авторы</th>
-                <th>Год</th>
-                <th>Тип</th>
-                <th>Журнал / конференция</th>
-                <th style="width: 140px;">Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var publication in Model)
-            {
-                <tr>
-                    <td>@publication.Title</td>
-                    <td>@publication.Authors</td>
-                    <td>@publication.Year</td>
-                    <td>@publication.Type</td>
-                    <td>@(publication.JournalTitle ?? publication.ConferenceTitle ?? "-")</td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <a asp-action="UpdatePublication" asp-route-id="@publication.Id" class="btn btn-warning btn-sm">Изменить</a>
-                            <form method="post" asp-action="DeletePublication">
-                                <input type="hidden" name="id" value="@publication.Id" />
-                                <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
-                            </form>
+                                <div class="mb-3">
+                                    <label class="form-label">Годы</label>
+                                    <div class="border rounded p-2" style="max-height: 170px; overflow-y: auto;">
+                                        @foreach (var year in allYears)
+                                        {
+                                            <div class="form-check">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       name="years"
+                                                       value="@year"
+                                                       id="year_@year"
+                                                       checked="@selectedYears.Contains(year)" />
+                                                <label class="form-check-label" for="year_@year">
+                                                    @year
+                                                </label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Категории eLibrary / РИНЦ</label>
+
+                                    <div class="border rounded p-2" style="max-height: 460px; overflow-y: auto;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="rinc" id="cat_rinc" checked="@selectedCategories.Contains("rinc")" />
+                                            <label class="form-check-label" for="cat_rinc">
+                                                публикации, включенные в РИНЦ (@CountBy(x => x.IsInRinc))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="coreRinc" id="cat_coreRinc" checked="@selectedCategories.Contains("coreRinc")" />
+                                            <label class="form-check-label" for="cat_coreRinc">
+                                                публикации, включенные в ядро РИНЦ (@CountBy(x => x.IsInCoreRinc))
+                                            </label>
+                                        </div>
+
+                                        <hr />
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList1" id="cat_whiteList1" checked="@selectedCategories.Contains("whiteList1")" />
+                                            <label class="form-check-label" for="cat_whiteList1">
+                                                Белый список, уровень 1 (@CountBy(x => x.IsWhiteListLevel1))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList2" id="cat_whiteList2" checked="@selectedCategories.Contains("whiteList2")" />
+                                            <label class="form-check-label" for="cat_whiteList2">
+                                                Белый список, уровень 2 (@CountBy(x => x.IsWhiteListLevel2))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList3" id="cat_whiteList3" checked="@selectedCategories.Contains("whiteList3")" />
+                                            <label class="form-check-label" for="cat_whiteList3">
+                                                Белый список, уровень 3 (@CountBy(x => x.IsWhiteListLevel3))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList4" id="cat_whiteList4" checked="@selectedCategories.Contains("whiteList4")" />
+                                            <label class="form-check-label" for="cat_whiteList4">
+                                                Белый список, уровень 4 (@CountBy(x => x.IsWhiteListLevel4))
+                                            </label>
+                                        </div>
+
+                                        <hr />
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="rsci" id="cat_rsci" checked="@selectedCategories.Contains("rsci")" />
+                                            <label class="form-check-label" for="cat_rsci">
+                                                RSCI (@CountBy(x => x.IsRsci))
+                                            </label>
+                                        </div>
+
+                                        <hr />
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ1" id="cat_scopusQ1" checked="@selectedCategories.Contains("scopusQ1")" />
+                                            <label class="form-check-label" for="cat_scopusQ1">
+                                                Scopus Q1 (@CountBy(x => x.IsScopusQ1))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ2" id="cat_scopusQ2" checked="@selectedCategories.Contains("scopusQ2")" />
+                                            <label class="form-check-label" for="cat_scopusQ2">
+                                                Scopus Q2 (@CountBy(x => x.IsScopusQ2))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ3" id="cat_scopusQ3" checked="@selectedCategories.Contains("scopusQ3")" />
+                                            <label class="form-check-label" for="cat_scopusQ3">
+                                                Scopus Q3 (@CountBy(x => x.IsScopusQ3))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ4" id="cat_scopusQ4" checked="@selectedCategories.Contains("scopusQ4")" />
+                                            <label class="form-check-label" for="cat_scopusQ4">
+                                                Scopus Q4 (@CountBy(x => x.IsScopusQ4))
+                                            </label>
+                                        </div>
+
+                                        <hr />
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ1" id="cat_wosQ1" checked="@selectedCategories.Contains("wosQ1")" />
+                                            <label class="form-check-label" for="cat_wosQ1">
+                                                Web of Science Q1 (@CountBy(x => x.IsWebOfScienceQ1))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ2" id="cat_wosQ2" checked="@selectedCategories.Contains("wosQ2")" />
+                                            <label class="form-check-label" for="cat_wosQ2">
+                                                Web of Science Q2 (@CountBy(x => x.IsWebOfScienceQ2))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ3" id="cat_wosQ3" checked="@selectedCategories.Contains("wosQ3")" />
+                                            <label class="form-check-label" for="cat_wosQ3">
+                                                Web of Science Q3 (@CountBy(x => x.IsWebOfScienceQ3))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ4" id="cat_wosQ4" checked="@selectedCategories.Contains("wosQ4")" />
+                                            <label class="form-check-label" for="cat_wosQ4">
+                                                Web of Science Q4 (@CountBy(x => x.IsWebOfScienceQ4))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="wosNoQuartile" id="cat_wosNoQuartile" checked="@selectedCategories.Contains("wosNoQuartile")" />
+                                            <label class="form-check-label" for="cat_wosNoQuartile">
+                                                Web of Science без квартиля (@CountBy(x => x.IsWebOfScienceNoQuartile))
+                                            </label>
+                                        </div>
+
+                                        <hr />
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="vak" id="cat_vak" checked="@selectedCategories.Contains("vak")" />
+                                            <label class="form-check-label" for="cat_vak">
+                                                ВАК (@CountBy(x => x.IsVak))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="vak1" id="cat_vak1" checked="@selectedCategories.Contains("vak1")" />
+                                            <label class="form-check-label" for="cat_vak1">
+                                                ВАК, категория 1 (@CountBy(x => x.IsVakCategory1))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="vak2" id="cat_vak2" checked="@selectedCategories.Contains("vak2")" />
+                                            <label class="form-check-label" for="cat_vak2">
+                                                ВАК, категория 2 (@CountBy(x => x.IsVakCategory2))
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categories" value="vak3" id="cat_vak3" checked="@selectedCategories.Contains("vak3")" />
+                                            <label class="form-check-label" for="cat_vak3">
+                                                ВАК, категория 3 (@CountBy(x => x.IsVakCategory3))
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">Применить фильтры</button>
+                                    <a asp-action="Publications" class="btn btn-outline-secondary">Сбросить</a>
+                                    <a asp-action="Profile" class="btn btn-secondary">Вернуться в профиль</a>
+                                </div>
+                            </div>
                         </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+                    </form>
+                </div>
+
+                <div class="col-lg-9">
+                    <div class="alert alert-light border">
+                        Найдено публикаций: <strong>@Model.Count</strong>
+                    </div>
+
+                    @if (Model == null || !Model.Any())
+                    {
+                        <div class="alert alert-warning">
+                            Публикации по выбранным фильтрам не найдены.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 55px;">№</th>
+                                        <th style="width: 70px;">Год</th>
+                                        <th>Публикация</th>
+                                        <th style="width: 90px;">Цит.</th>
+                                        <th style="width: 240px;">Категории</th>
+                                        <th style="width: 115px;">eLibrary</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        var number = 1;
+                                    }
+
+                                    @foreach (var publication in Model)
+                                    {
+                                        <tr>
+                                            <td>@number</td>
+                                            <td>@publication.Year</td>
+
+                                            <td>
+                                                <strong>@publication.Title</strong>
+
+                                                <div class="text-muted small mt-1">
+                                                    @publication.Authors
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(publication.JournalTitle))
+                                                {
+                                                    <div class="small mt-1">
+                                                        <strong>Журнал:</strong> @publication.JournalTitle
+                                                    </div>
+                                                }
+                                                else if (!string.IsNullOrWhiteSpace(publication.ConferenceTitle))
+                                                {
+                                                    <div class="small mt-1">
+                                                        <strong>Конференция:</strong> @publication.ConferenceTitle
+                                                    </div>
+                                                }
+
+                                                @if (!string.IsNullOrWhiteSpace(publication.Doi))
+                                                {
+                                                    <div class="small mt-1">
+                                                        <strong>DOI:</strong> @publication.Doi
+                                                    </div>
+                                                }
+
+                                                @if (!string.IsNullOrWhiteSpace(publication.Keywords))
+                                                {
+                                                    <div class="small mt-1">
+                                                        <strong>Ключевые слова:</strong> @publication.Keywords
+                                                    </div>
+                                                }
+
+                                                @if (!string.IsNullOrWhiteSpace(publication.Annotation))
+                                                {
+                                                    <details class="mt-1">
+                                                        <summary class="small text-primary">Аннотация</summary>
+                                                        <div class="small mt-1">
+                                                            @publication.Annotation
+                                                        </div>
+                                                    </details>
+                                                }
+                                            </td>
+
+                                            <td>@(publication.CitationsRincCount?.ToString() ?? "0")</td>
+
+                                            <td>
+                                                @if (publication.IsInRinc)
+                                                {
+                                                    <span class="badge bg-primary me-1 mb-1">РИНЦ</span>
+                                                }
+
+                                                @if (publication.IsInCoreRinc)
+                                                {
+                                                    <span class="badge bg-success me-1 mb-1">Ядро РИНЦ</span>
+                                                }
+
+                                                @if (publication.IsRsci)
+                                                {
+                                                    <span class="badge bg-info text-dark me-1 mb-1">RSCI</span>
+                                                }
+
+                                                @if (publication.IsVak)
+                                                {
+                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК</span>
+                                                }
+
+                                                @if (publication.IsVakCategory1)
+                                                {
+                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК-1</span>
+                                                }
+
+                                                @if (publication.IsVakCategory2)
+                                                {
+                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК-2</span>
+                                                }
+
+                                                @if (publication.IsVakCategory3)
+                                                {
+                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК-3</span>
+                                                }
+
+                                                @if (publication.IsWhiteListLevel1)
+                                                {
+                                                    <span class="badge bg-dark me-1 mb-1">БС-1</span>
+                                                }
+
+                                                @if (publication.IsWhiteListLevel2)
+                                                {
+                                                    <span class="badge bg-dark me-1 mb-1">БС-2</span>
+                                                }
+
+                                                @if (publication.IsWhiteListLevel3)
+                                                {
+                                                    <span class="badge bg-dark me-1 mb-1">БС-3</span>
+                                                }
+
+                                                @if (publication.IsWhiteListLevel4)
+                                                {
+                                                    <span class="badge bg-dark me-1 mb-1">БС-4</span>
+                                                }
+
+                                                @if (publication.IsScopusQ1)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q1</span>
+                                                }
+
+                                                @if (publication.IsScopusQ2)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q2</span>
+                                                }
+
+                                                @if (publication.IsScopusQ3)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q3</span>
+                                                }
+
+                                                @if (publication.IsScopusQ4)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q4</span>
+                                                }
+
+                                                @if (publication.IsWebOfScienceQ1)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q1</span>
+                                                }
+
+                                                @if (publication.IsWebOfScienceQ2)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q2</span>
+                                                }
+
+                                                @if (publication.IsWebOfScienceQ3)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q3</span>
+                                                }
+
+                                                @if (publication.IsWebOfScienceQ4)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q4</span>
+                                                }
+
+                                                @if (publication.IsWebOfScienceNoQuartile)
+                                                {
+                                                    <span class="badge bg-secondary me-1 mb-1">WoS без квартиля</span>
+                                                }
+
+                                                @if (!publication.IsInRinc &&
+                                                                                        !publication.IsInCoreRinc &&
+                                                                                        !publication.IsRsci &&
+                                                                                        !publication.IsVak &&
+                                                                                        !publication.IsVakCategory1 &&
+                                                                                        !publication.IsVakCategory2 &&
+                                                                                        !publication.IsVakCategory3 &&
+                                                                                        !publication.IsWhiteListLevel1 &&
+                                                                                        !publication.IsWhiteListLevel2 &&
+                                                                                        !publication.IsWhiteListLevel3 &&
+                                                                                        !publication.IsWhiteListLevel4 &&
+                                                                                        !publication.IsScopusQ1 &&
+                                                                                        !publication.IsScopusQ2 &&
+                                                                                        !publication.IsScopusQ3 &&
+                                                                                        !publication.IsScopusQ4 &&
+                                                                                        !publication.IsWebOfScienceQ1 &&
+                                                                                        !publication.IsWebOfScienceQ2 &&
+                                                                                        !publication.IsWebOfScienceQ3 &&
+                                                                                        !publication.IsWebOfScienceQ4 &&
+                                                                                        !publication.IsWebOfScienceNoQuartile)
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+
+                                            <td>
+                                                @if (!string.IsNullOrWhiteSpace(publication.Url))
+                                                {
+                                                    <a href="@publication.Url" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        Открыть
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span>—</span>
+                                                }
+                                            </td>
+                                        </tr>
+
+                                        number++;
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

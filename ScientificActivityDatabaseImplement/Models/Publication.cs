@@ -50,6 +50,41 @@ namespace ScientificActivityDatabaseImplement.Models
 
         public virtual Conference? Conference { get; set; }
 
+        public string? ELibraryId { get; set; }
+
+        public int? CitationsRincCount { get; set; }
+
+        public bool IsInRinc { get; set; }
+        public bool IsInCoreRinc { get; set; }
+
+        public bool IsWhiteListLevel1 { get; set; }
+        public bool IsWhiteListLevel2 { get; set; }
+        public bool IsWhiteListLevel3 { get; set; }
+        public bool IsWhiteListLevel4 { get; set; }
+
+        public bool IsRsci { get; set; }
+
+        public bool IsScopusQ1 { get; set; }
+        public bool IsScopusQ2 { get; set; }
+        public bool IsScopusQ3 { get; set; }
+        public bool IsScopusQ4 { get; set; }
+
+        public bool IsWebOfScienceQ1 { get; set; }
+        public bool IsWebOfScienceQ2 { get; set; }
+        public bool IsWebOfScienceQ3 { get; set; }
+        public bool IsWebOfScienceQ4 { get; set; }
+        public bool IsWebOfScienceNoQuartile { get; set; }
+
+        public bool IsVak { get; set; }
+        public bool IsVakCategory1 { get; set; }
+        public bool IsVakCategory2 { get; set; }
+        public bool IsVakCategory3 { get; set; }
+
+        public string? RubricOecd { get; set; }
+        public string? RubricAsjc { get; set; }
+        public string? RubricGrnti { get; set; }
+        public string? VakSpecialty { get; set; }
+
         public static Publication? Create(PublicationBindingModel model)
         {
             if (model == null)
@@ -71,7 +106,33 @@ namespace ScientificActivityDatabaseImplement.Models
                 ConferenceId = model.ConferenceId,
                 ResearcherId = model.ResearcherId,
                 Keywords = model.Keywords,
-                Annotation = model.Annotation
+                Annotation = model.Annotation,
+                ELibraryId = model.ELibraryId,
+                CitationsRincCount = model.CitationsRincCount,
+                IsInRinc = model.IsInRinc,
+                IsInCoreRinc = model.IsInCoreRinc,
+                IsWhiteListLevel1 = model.IsWhiteListLevel1,
+                IsWhiteListLevel2 = model.IsWhiteListLevel2,
+                IsWhiteListLevel3 = model.IsWhiteListLevel3,
+                IsWhiteListLevel4 = model.IsWhiteListLevel4,
+                IsRsci = model.IsRsci,
+                IsScopusQ1 = model.IsScopusQ1,
+                IsScopusQ2 = model.IsScopusQ2,
+                IsScopusQ3 = model.IsScopusQ3,
+                IsScopusQ4 = model.IsScopusQ4,
+                IsWebOfScienceQ1 = model.IsWebOfScienceQ1,
+                IsWebOfScienceQ2 = model.IsWebOfScienceQ2,
+                IsWebOfScienceQ3 = model.IsWebOfScienceQ3,
+                IsWebOfScienceQ4 = model.IsWebOfScienceQ4,
+                IsWebOfScienceNoQuartile = model.IsWebOfScienceNoQuartile,
+                IsVak = model.IsVak,
+                IsVakCategory1 = model.IsVakCategory1,
+                IsVakCategory2 = model.IsVakCategory2,
+                IsVakCategory3 = model.IsVakCategory3,
+                RubricOecd = model.RubricOecd,
+                RubricAsjc = model.RubricAsjc,
+                RubricGrnti = model.RubricGrnti,
+                VakSpecialty = model.VakSpecialty
             };
         }
 
@@ -94,6 +155,32 @@ namespace ScientificActivityDatabaseImplement.Models
             ResearcherId = model.ResearcherId;
             Keywords = model.Keywords;
             Annotation = model.Annotation;
+            ELibraryId = model.ELibraryId;
+            CitationsRincCount = model.CitationsRincCount;
+            IsInRinc = model.IsInRinc;
+            IsInCoreRinc = model.IsInCoreRinc;
+            IsWhiteListLevel1 = model.IsWhiteListLevel1;
+            IsWhiteListLevel2 = model.IsWhiteListLevel2;
+            IsWhiteListLevel3 = model.IsWhiteListLevel3;
+            IsWhiteListLevel4 = model.IsWhiteListLevel4;
+            IsRsci = model.IsRsci;
+            IsScopusQ1 = model.IsScopusQ1;
+            IsScopusQ2 = model.IsScopusQ2;
+            IsScopusQ3 = model.IsScopusQ3;
+            IsScopusQ4 = model.IsScopusQ4;
+            IsWebOfScienceQ1 = model.IsWebOfScienceQ1;
+            IsWebOfScienceQ2 = model.IsWebOfScienceQ2;
+            IsWebOfScienceQ3 = model.IsWebOfScienceQ3;
+            IsWebOfScienceQ4 = model.IsWebOfScienceQ4;
+            IsWebOfScienceNoQuartile = model.IsWebOfScienceNoQuartile;
+            IsVak = model.IsVak;
+            IsVakCategory1 = model.IsVakCategory1;
+            IsVakCategory2 = model.IsVakCategory2;
+            IsVakCategory3 = model.IsVakCategory3;
+            RubricOecd = model.RubricOecd;
+            RubricAsjc = model.RubricAsjc;
+            RubricGrnti = model.RubricGrnti;
+            VakSpecialty = model.VakSpecialty;
         }
 
         public PublicationViewModel GetViewModel => new()
@@ -111,6 +198,32 @@ namespace ScientificActivityDatabaseImplement.Models
             ResearcherId = ResearcherId,
             Keywords = Keywords,
             Annotation = Annotation,
+            ELibraryId = ELibraryId,
+            CitationsRincCount = CitationsRincCount,
+            IsInRinc = IsInRinc,
+            IsInCoreRinc = IsInCoreRinc,
+            IsRsci = IsRsci,
+            IsScopusQ1 = IsScopusQ1,
+            IsScopusQ2 = IsScopusQ2,
+            IsScopusQ3 = IsScopusQ3,
+            IsScopusQ4 = IsScopusQ4,
+            IsVak = IsVak,
+            IsVakCategory1 = IsVakCategory1,
+            IsVakCategory2 = IsVakCategory2,
+            IsVakCategory3 = IsVakCategory3,
+            IsWebOfScienceNoQuartile = IsWebOfScienceNoQuartile,
+            IsWebOfScienceQ1 = IsWebOfScienceQ1,
+            IsWebOfScienceQ2 = IsWebOfScienceQ2,
+            IsWebOfScienceQ3 = IsWebOfScienceQ3,
+            IsWebOfScienceQ4 = IsWebOfScienceQ4,
+            IsWhiteListLevel1 = IsWhiteListLevel1,
+            IsWhiteListLevel2 = IsWhiteListLevel2,
+            IsWhiteListLevel3 = IsWhiteListLevel3,
+            IsWhiteListLevel4 = IsWhiteListLevel4,
+            VakSpecialty = VakSpecialty,
+            RubricAsjc = RubricAsjc,
+            RubricGrnti = RubricGrnti,
+            RubricOecd = RubricOecd,
             ResearcherFullName = Researcher == null
                 ? string.Empty
                 : string.IsNullOrWhiteSpace(Researcher.MiddleName)
