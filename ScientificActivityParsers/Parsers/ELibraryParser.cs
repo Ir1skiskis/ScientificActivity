@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using SeleniumUndetectedChromeDriver;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using Newtonsoft.Json;
@@ -288,23 +289,31 @@ namespace ScientificActivityParsers.Parsers
         private static IWebDriver CreateChromeDriver()
         {
             var options = new ChromeOptions();
-
-            options.AddArgument("--headless=new");
             options.AddArgument("--window-size=1920,1080");
             options.AddArgument("--disable-gpu");
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-dev-shm-usage");
             options.AddArgument("--lang=ru-RU");
             options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
-
+            // options.AddArgument("--headless=new");
             options.PageLoadStrategy = PageLoadStrategy.Normal;
 
-            var service = ChromeDriverService.CreateDefaultService();
-            service.HideCommandPromptWindow = true;
-            service.SuppressInitialDiagnosticInformation = true;
+            string driverPath;
+            try
+            {
+                driverPath = new ChromeDriverInstaller().Auto().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Не удалось загрузить chromedriver", ex);
+            }
 
-            var driver = new ChromeDriver(service, options, TimeSpan.FromSeconds(60));
-
+            var driver = UndetectedChromeDriver.Create(
+                driverExecutablePath: driverPath,
+                options: options,
+                hideCommandPromptWindow: true,
+                suppressWelcome: true
+            );
             driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(60);
             driver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(30);
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(2);
