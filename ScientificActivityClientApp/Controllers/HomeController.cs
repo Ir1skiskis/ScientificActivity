@@ -971,6 +971,7 @@ namespace ScientificActivityClientApp.Controllers
     string? city,
     string? country,
     string? organizer,
+    string? subject,
     bool? onlyUpcoming,
     DateTime? startDateFrom,
     DateTime? startDateTo,
@@ -1030,6 +1031,14 @@ namespace ScientificActivityClientApp.Controllers
                     query = query.Where(x =>
                         !string.IsNullOrWhiteSpace(x.Organizer) &&
                         x.Organizer.Contains(normalizedOrganizer, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrWhiteSpace(subject))
+                {
+                    var normalizedSubject = subject.Trim();
+                    query = query.Where(x =>
+                        !string.IsNullOrWhiteSpace(x.SubjectArea) &&
+                        x.SubjectArea.Contains(normalizedSubject, StringComparison.OrdinalIgnoreCase));
                 }
 
                 if (onlyUpcoming == true)
@@ -1094,6 +1103,7 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.CityValue = city;
                 ViewBag.CountryValue = country;
                 ViewBag.OrganizerValue = organizer;
+                ViewBag.SubjectValue = subject;
                 ViewBag.OnlyUpcomingValue = onlyUpcoming;
                 ViewBag.StartDateFromValue = startDateFrom?.ToString("yyyy-MM-dd");
                 ViewBag.StartDateToValue = startDateTo?.ToString("yyyy-MM-dd");

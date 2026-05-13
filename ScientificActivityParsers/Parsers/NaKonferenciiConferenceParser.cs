@@ -1,7 +1,11 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
 using ScientificActivityParsers.Interfaces;
 using ScientificActivityParsers.Models;
+using SeleniumUndetectedChromeDriver;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -29,287 +33,47 @@ namespace ScientificActivityParsers.Parsers
 
         public async Task<List<ConferenceImportModel>> ParseAsync(CancellationToken cancellationToken = default)
         {
-            var result = new List<ConferenceImportModel>();
-
-            var categoryUrls = GetStartCategoryUrls();
-
-            var visitedCategoryPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var categoryQueue = new Queue<string>();
-
-            foreach (var url in categoryUrls
-                         .Where(x => !string.IsNullOrWhiteSpace(x))
-                         .Select(NormalizeUrl)
-                         .Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                categoryQueue.Enqueue(url);
-            }
-
-            var conferenceUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            while (categoryQueue.Count > 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var currentCategoryUrl = categoryQueue.Dequeue();
-
-                if (!visitedCategoryPages.Add(currentCategoryUrl))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    _logger.LogInformation("Conference parser: open category page {Url}", currentCategoryUrl);
-
-                    var html = await GetPageHtmlAsync(currentCategoryUrl, cancellationToken);
-
-                    var doc = new HtmlDocument();
-                    doc.LoadHtml(html);
-
-                    var foundConferenceUrls = ExtractConferenceLinksFromCategoryPage(doc, currentCategoryUrl);
-                    _logger.LogInformation(
-                        "Conference parser: found {Count} conference links on category page {Url}",
-                        foundConferenceUrls.Count,
-                        currentCategoryUrl);
-
-                    foreach (var conferenceUrl in foundConferenceUrls)
-                    {
-                        conferenceUrls.Add(conferenceUrl);
-                    }
-
-                    var paginationLinks = ExtractCategoryPaginationLinks(doc, currentCategoryUrl);
-                    _logger.LogInformation(
-                        "Conference parser: found {Count} pagination links on category page {Url}",
-                        paginationLinks.Count,
-                        currentCategoryUrl);
-
-                    foreach (var pageLink in paginationLinks)
-                    {
-                        if (!visitedCategoryPages.Contains(pageLink))
-                        {
-                            categoryQueue.Enqueue(pageLink);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Conference parser: failed to process category page {Url}", currentCategoryUrl);
-                }
-            }
-
-            _logger.LogInformation(
-                "Conference parser: total unique conference URLs collected {Count}",
-                conferenceUrls.Count);
-
-            foreach (var conferenceUrl in conferenceUrls)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    _logger.LogInformation("Conference parser: open conference page {Url}", conferenceUrl);
-
-                    var html = await GetPageHtmlAsync(conferenceUrl, cancellationToken);
-
-                    var conference = ParseConferenceDetailsPage(html, conferenceUrl);
-                    if (conference != null &&
-                        !string.IsNullOrWhiteSpace(conference.Title) &&
-                        !string.IsNullOrWhiteSpace(conference.Url))
-                    {
-                        result.Add(conference);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Conference parser: failed to parse conference page {Url}", conferenceUrl);
-                }
-            }
-
-            var finalResult = result
-                .Where(x => !string.IsNullOrWhiteSpace(x.Title))
-                .Where(x => !string.IsNullOrWhiteSpace(x.Url))
-                .GroupBy(x => NormalizeUrl(x.Url), StringComparer.OrdinalIgnoreCase)
+            var past = await ParsePastEventsAsync(cancellationToken);
+            var announcements = await ParseAnnouncementsAsync(cancellationToken);
+            var combined = past.Concat(announcements).ToList();
+            return combined
+                .GroupBy(x => NormalizeUrl(x.Url))
                 .Select(g => g.First())
                 .GroupBy(x => $"{x.Title.Trim().ToLowerInvariant()}|{x.StartDate:yyyy-MM-dd}")
                 .Select(g => g.First())
                 .ToList();
-
-            _logger.LogInformation(
-                "Conference parser: total parsed {Count} unique conferences",
-                finalResult.Count);
-
-            return finalResult;
         }
 
-        private static List<string> GetStartCategoryUrls()
-        {
-            return new List<string>
-            {
-                "https://na-konferencii.ru/conference-cat/tehnicheskie-nauki/informacionnye-tehnologii",
-                "https://na-konferencii.ru/conference-cat/tehnicheskie-nauki/tehnologii",
-                "https://na-konferencii.ru/conference-cat/tehnicheskie-nauki/jenergetika",
-                "https://na-konferencii.ru/conference-cat/tehnicheskie-nauki/modelirovanie",
-                "https://na-konferencii.ru/conference-cat/estestvennye-nauki/fizika",
-                "https://na-konferencii.ru/conference-cat/estestvennye-nauki/himija",
-                "https://na-konferencii.ru/conference-cat/estestvennye-nauki/geografija",
-                "https://na-konferencii.ru/conference-cat/estestvennye-nauki/geologija",
-                "https://na-konferencii.ru/conference-cat/estestvennye-nauki/nauki-o-zemle",
-                "https://na-konferencii.ru/conference-cat/estestvennye-nauki/jekologija-prirodopolzovanie",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/jekonomika-upravlenie-finansy",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/gosudarstvennoe-upravlenie",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/juridicheskie-nauki",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/filologija",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/sociologija",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/filosofija",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/zhurnalistika",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/inostrannye-jazyki",
-                "https://na-konferencii.ru/conference-cat/obshhestvennyie-gumanitarnyie-nauki/obrazovanie-attestacija",
-                "https://na-konferencii.ru/conference-cat/raznoe/shirokaja-tematika"
-            };
-        }
-
-        private async Task<string> GetPageHtmlAsync(string url, CancellationToken cancellationToken)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36");
-            request.Headers.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.9,en;q=0.8");
-
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            return await response.Content.ReadAsStringAsync(cancellationToken);
-        }
-
-        private List<string> ExtractConferenceLinksFromCategoryPage(HtmlDocument doc, string baseUrl)
-        {
-            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            var links = doc.DocumentNode.SelectNodes("//a[@href]");
-            if (links == null)
-            {
-                return result.ToList();
-            }
-
-            foreach (var link in links)
-            {
-                var href = CleanText(link.GetAttributeValue("href", string.Empty));
-                if (string.IsNullOrWhiteSpace(href))
-                {
-                    continue;
-                }
-
-                var absoluteUrl = BuildAbsoluteUrl(baseUrl, href);
-                if (string.IsNullOrWhiteSpace(absoluteUrl))
-                {
-                    continue;
-                }
-
-                absoluteUrl = NormalizeUrl(absoluteUrl);
-
-                if (!absoluteUrl.Contains("na-konferencii.ru", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!absoluteUrl.Contains("/conference/", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (absoluteUrl.Contains("/conference-cat/", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (absoluteUrl.Contains("/page/", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                result.Add(absoluteUrl);
-            }
-
-            return result.ToList();
-        }
-
-        private List<string> ExtractCategoryPaginationLinks(HtmlDocument doc, string baseUrl)
-        {
-            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            var currentCategoryRoot = GetCategoryRoot(baseUrl);
-
-            var links = doc.DocumentNode.SelectNodes("//a[@href]");
-            if (links == null)
-            {
-                return result.ToList();
-            }
-
-            foreach (var link in links)
-            {
-                var href = CleanText(link.GetAttributeValue("href", string.Empty));
-                if (string.IsNullOrWhiteSpace(href))
-                {
-                    continue;
-                }
-
-                var absoluteUrl = BuildAbsoluteUrl(baseUrl, href);
-                if (string.IsNullOrWhiteSpace(absoluteUrl))
-                {
-                    continue;
-                }
-
-                absoluteUrl = NormalizeUrl(absoluteUrl);
-
-                if (!absoluteUrl.Contains("na-konferencii.ru", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!absoluteUrl.Contains("/page/", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!absoluteUrl.StartsWith(currentCategoryRoot, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                result.Add(absoluteUrl);
-            }
-
-            return result.ToList();
-        }
-
-        private ConferenceImportModel? ParseConferenceDetailsPage(string html, string pageUrl)
+        private ConferenceImportModel? ParseConferenceDetailsPage(string html, string pageUrl, Dictionary<string, (string? city, string? country)>? locations)
         {
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
-
             var title = ExtractTitle(doc);
             if (string.IsNullOrWhiteSpace(title))
-            {
-                _logger.LogWarning("Conference parser: title not found on {Url}", pageUrl);
                 return null;
+
+            string? city = null, country = null;
+            if (locations != null && locations.TryGetValue(pageUrl, out var loc))
+            {
+                city = loc.city;
+                country = loc.country;
+            }
+            if (string.IsNullOrWhiteSpace(city) && string.IsNullOrWhiteSpace(country))
+            {
+                var locationNode = doc.DocumentNode.SelectSingleNode("//div[contains(@class,'notice-item-top-location')]//p");
+                if (locationNode != null)
+                {
+                    string locText = CleanText(locationNode.InnerText);
+                    (city, country) = ParseCityCountryFromLocationString(locText);
+                }
             }
 
             var fullText = NormalizeText(HtmlEntity.DeEntitize(doc.DocumentNode.InnerText));
             var factsBlock = ExtractFactsBlock(fullText);
-
-            ParseLocation(factsBlock, out var city, out var country);
-
             var organizer = ExtractOrganizer(doc, factsBlock, fullText);
             var subjectArea = ExtractSubjectArea(doc, fullText);
             var status = ExtractStatus(doc, fullText);
-
-            ParseDates(
-                factsBlock,
-                fullText,
-                out var startDate,
-                out var endDate,
-                out var submissionStart,
-                out var submissionEnd);
-
+            ParseDates(factsBlock, fullText, out var startDate, out var endDate, out var submissionStart, out var submissionEnd);
             var description = BuildDescription(status, submissionStart, submissionEnd);
 
             return new ConferenceImportModel
@@ -415,15 +179,11 @@ namespace ScientificActivityParsers.Parsers
 
             source = NormalizeText(source);
 
-            // 1. Сначала пытаемся взять текст после "Организаторы:"
-            var match = Regex.Match(
-                source,
-                @"Организаторы?\s*:\s*(?<value>.+)",
-                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            var match = Regex.Match(source, @"Организаторы?\s*:\s*(?<value>.+?)(?=(?:\n|\.\s+)(?:Конференция приурочена|Для нас юбилей|Рабочие языки|Оргкомитет|Заявка должна включать|Крайний срок|$))",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
             if (!match.Success)
             {
-                // fallback по параграфам
                 var paragraphs = doc.DocumentNode.SelectNodes("//p|//div");
                 if (paragraphs != null)
                 {
@@ -613,41 +373,6 @@ namespace ScientificActivityParsers.Parsers
             return string.Join(". ", parts);
         }
 
-        private static void ParseLocation(string sourceText, out string? city, out string? country)
-        {
-            city = null;
-            country = null;
-
-            if (string.IsNullOrWhiteSpace(sourceText))
-            {
-                return;
-            }
-
-            var normalized = Regex.Replace(sourceText, @"\s+", " ").Trim();
-
-            var explicitMatch = Regex.Match(
-                normalized,
-                @"^(?<city>[А-ЯA-ZЁ][А-ЯA-ZЁа-яa-z\-\s\.]+?)\s*,\s*(?<country>[А-ЯA-ZЁ][А-ЯA-ZЁа-яa-z\-\s\.]+?)(?=\s+Дата проведения:|\s+При[её]м заявок|\s+Форма проведения:|\s+Организаторы:|$)",
-                RegexOptions.IgnoreCase);
-
-            if (explicitMatch.Success)
-            {
-                city = CleanInlineText(explicitMatch.Groups["city"].Value);
-                country = CleanInlineText(explicitMatch.Groups["country"].Value);
-                return;
-            }
-
-            var countryOnlyMatch = Regex.Match(
-                normalized,
-                @"^(?<country>Россия|Узбекистан|Казахстан|Беларусь|Республика Беларусь|Таджикистан|Кыргызстан|Армения|Азербайджан|Грузия|Новосибирская область|Ханты-Мансийский автономный округ\s*–\s*Югра)(?=\s+Дата проведения:|\s+При[её]м заявок|\s+Форма проведения:|\s+Организаторы:|$)",
-                RegexOptions.IgnoreCase);
-
-            if (countryOnlyMatch.Success)
-            {
-                country = CleanInlineText(countryOnlyMatch.Groups["country"].Value);
-            }
-        }
-
         private static int ParseRussianMonth(string monthName)
         {
             if (string.IsNullOrWhiteSpace(monthName))
@@ -790,19 +515,6 @@ namespace ScientificActivityParsers.Parsers
             return normalized;
         }
 
-        private static string GetCategoryRoot(string url)
-        {
-            var normalized = NormalizeUrl(url);
-
-            var pageIndex = normalized.IndexOf("/page/", StringComparison.OrdinalIgnoreCase);
-            if (pageIndex >= 0)
-            {
-                return normalized[..pageIndex];
-            }
-
-            return normalized;
-        }
-
         private static string NormalizeText(string? text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -857,35 +569,33 @@ namespace ScientificActivityParsers.Parsers
 
             var value = CleanInlineText(text);
 
-            // Убираем HTML/пробельный мусор
             value = Regex.Replace(value, @"\s{2,}", " ").Trim();
 
-            // Отсекаем все, что явно не относится к организатору
             var stopPatterns = new[]
             {
-        @"\bПеречень\s+ВАК\b",
-        @"\bВАК\b",
-        @"\bРИНЦ\b",
-        @"\bScopus\b",
-        @"\bWeb\s+of\s+Science\b",
-        @"\beLibrary\b",
-        @"\bDOI\b",
-        @"\bИнформационное\s+сообщение\b",
-        @"\bУважаемые\s+коллеги\b",
-        @"\bЦелью\s+конференции\s+является\b",
-        @"\bКонференция\s+ориентирована\b",
-        @"\bКонференция\s+в\s+\d{4}\s+году\s+посвящена\b",
-        @"\bНаучный\s+альманах\b",
-        @"\bВ\s+программу\s+будут\s+включены\b",
-        @"\bОсновные\s+тематики\s+докладов\b",
-        @"\bРабочий\s+язык\s+конференции\b",
-        @"\bОнлайн-трансляция\s+не\s+предусмотрена\b",
-        @"\bВ\s+рамках\s+конференции\s+будут\s+обсуждаться\b",
-        @"\bКонтактная\s+информация\b",
-        @"\bФорма\s+проведения\b",
-        @"\bДата\s+проведения\b",
-        @"\bПри[её]м\s+заявок\b"
-    };
+                @"\bПеречень\s+ВАК\b",
+                @"\bВАК\b",
+                @"\bРИНЦ\b",
+                @"\bScopus\b",
+                @"\bWeb\s+of\s+Science\b",
+                @"\beLibrary\b",
+                @"\bDOI\b",
+                @"\bИнформационное\s+сообщение\b",
+                @"\bУважаемые\s+коллеги\b",
+                @"\bЦелью\s+конференции\s+является\b",
+                @"\bКонференция\s+ориентирована\b",
+                @"\bКонференция\s+в\s+\d{4}\s+году\s+посвящена\b",
+                @"\bНаучный\s+альманах\b",
+                @"\bВ\s+программу\s+будут\s+включены\b",
+                @"\bОсновные\s+тематики\s+докладов\b",
+                @"\bРабочий\s+язык\s+конференции\b",
+                @"\bОнлайн-трансляция\s+не\s+предусмотрена\b",
+                @"\bВ\s+рамках\s+конференции\s+будут\s+обсуждаться\b",
+                @"\bКонтактная\s+информация\b",
+                @"\bФорма\s+проведения\b",
+                @"\bДата\s+проведения\b",
+                @"\bПри[её]м\s+заявок\b"
+            };
 
             var cutIndex = -1;
 
@@ -906,35 +616,33 @@ namespace ScientificActivityParsers.Parsers
                 value = value[..cutIndex].Trim();
             }
 
-            // Если после организатора внезапно пошли тематики через запятую,
-            // пробуем остановиться до первого тематического хвоста
             var subjectAreaStarters = new[]
             {
-        "Информационные технологии",
-        "Молодые учёные",
-        "Молодые ученые",
-        "Проблемы науки",
-        "Инновации",
-        "Экология",
-        "Природопользование",
-        "Естественные науки",
-        "Технические науки",
-        "Химия",
-        "Биология",
-        "Физика",
-        "Математика",
-        "Педагогика",
-        "Филология",
-        "Иностранные языки",
-        "Экономика",
-        "Юридические науки",
-        "Социология",
-        "Философия",
-        "Журналистика",
-        "Образование",
-        "Науки о Земле",
-        "Широкая тематика"
-    };
+                "Информационные технологии",
+                "Молодые учёные",
+                "Молодые ученые",
+                "Проблемы науки",
+                "Инновации",
+                "Экология",
+                "Природопользование",
+                "Естественные науки",
+                "Технические науки",
+                "Химия",
+                "Биология",
+                "Физика",
+                "Математика",
+                "Педагогика",
+                "Филология",
+                "Иностранные языки",
+                "Экономика",
+                "Юридические науки",
+                "Социология",
+                "Философия",
+                "Журналистика",
+                "Образование",
+                "Науки о Земле",
+                "Широкая тематика"
+            };
 
             foreach (var starter in subjectAreaStarters)
             {
@@ -945,10 +653,346 @@ namespace ScientificActivityParsers.Parsers
                 }
             }
 
-            // Чистим хвостовую пунктуацию
             value = value.Trim().Trim(',', ';', '.', '-').Trim();
 
             return value;
+        }
+
+        private static readonly Dictionary<char, string> TranslitMap = new()
+        {
+            ['а'] = "a",
+            ['б'] = "b",
+            ['в'] = "v",
+            ['г'] = "g",
+            ['д'] = "d",
+            ['е'] = "e",
+            ['ё'] = "e",
+            ['ж'] = "zh",
+            ['з'] = "z",
+            ['и'] = "i",
+            ['й'] = "y",
+            ['к'] = "k",
+            ['л'] = "l",
+            ['м'] = "m",
+            ['н'] = "n",
+            ['о'] = "o",
+            ['п'] = "p",
+            ['р'] = "r",
+            ['с'] = "s",
+            ['т'] = "t",
+            ['у'] = "u",
+            ['ф'] = "f",
+            ['х'] = "kh",
+            ['ц'] = "ts",
+            ['ч'] = "ch",
+            ['ш'] = "sh",
+            ['щ'] = "shh",
+            ['ъ'] = "",
+            ['ы'] = "y",
+            ['ь'] = "",
+            ['э'] = "e",
+            ['ю'] = "yu",
+            ['я'] = "ya",
+            [' '] = "-",
+            [','] = "-",
+            ['–'] = "-",
+            ['·'] = "-",
+            ['0'] = "-",
+            ['('] = "",
+            [')'] = "",
+            ['/'] = "-",
+            ['\\'] = "-",
+            ['&'] = "",
+            ['+'] = ""
+        };
+
+        private static (string? city, string? country) ParseCityCountryFromLocationString(string location)
+        {
+            if (string.IsNullOrWhiteSpace(location))
+                return (null, null);
+            var parts = location.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+            {
+                string city = parts[0].Trim();
+                string country = parts[1].Trim();
+                return (city, country);
+            }
+            else if (parts.Length == 1)
+            {
+                return (null, parts[0].Trim());
+            }
+            return (null, null);
+        }
+
+        public async Task<List<ConferenceImportModel>> ParsePastEventsAsync(CancellationToken cancellationToken = default)
+        {
+            var result = new List<ConferenceImportModel>();
+            var conferenceUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var conferenceLocations = new Dictionary<string, (string? city, string? country)>(StringComparer.OrdinalIgnoreCase);
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
+            client.DefaultRequestHeaders.Referrer = new Uri("https://na-konferencii.ru/proshedshie-meroprijatija");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+            // мб менять придется(f12-network)
+            var nonce = "ce5f0f90d3";
+            var baseParams = new List<KeyValuePair<string, string>>
+            {
+                new("action", "filterhome"),
+                new("nonce", nonce),
+                new("past_events", "1"),
+                new("actual_events", "0"),
+                new("period_start", ""),
+                new("period_end", DateTime.Now.ToString("dd/MM/yyyy")),
+                new("location", ""),
+                new("search_type", ""),
+                new("autor_id", "0"),
+                new("search_keyword", ""),
+                new("application", "")
+            };
+
+            const int totalPages = 536;
+            for (int page = 1; page <= totalPages; page++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                _logger.LogInformation("Обработка страницы {Page} из {Total}", page, totalPages);
+
+                var parameters = new List<KeyValuePair<string, string>>(baseParams)
+                {
+                    new("page", page.ToString())
+                };
+                var content = new FormUrlEncodedContent(parameters);
+
+                string html = null;
+                const int maxRetries = 3;
+                for (int retry = 1; retry <= maxRetries; retry++)
+                {
+                    try
+                    {
+                        var response = await client.PostAsync("https://na-konferencii.ru/wp-admin/admin-ajax.php", content, cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        html = await response.Content.ReadAsStringAsync(cancellationToken);
+                        break;
+                    }
+                    catch (Exception ex) when (retry < maxRetries)
+                    {
+                        _logger.LogWarning(ex, "Ошибка запроса для страницы {Page}, попытка {Retry} из {MaxRetries}, повтор через {Delay}с", page, retry, maxRetries, Math.Pow(2, retry));
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retry)), cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Ошибка запроса для страницы {Page} после {MaxRetries} попыток, пропускаем", page, maxRetries);
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(html) || html.Length < 100)
+                {
+                    _logger.LogInformation("Пустой ответ или ошибка на странице {Page}, завершаем", page);
+                    break;
+                }
+
+                if (page == 1)
+                {
+                    _logger.LogInformation("HTML ответа (первые 500 символов): {Html}", html.Length > 500 ? html[..500] : html);
+                    var debugPath = Path.Combine(Path.GetTempPath(), "na-konferencii_response_page1.html");
+                    await File.WriteAllTextAsync(debugPath, html, cancellationToken);
+                    _logger.LogInformation("Полный ответ сохранён в {Path}", debugPath);
+                }
+
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
+                var items = doc.DocumentNode.SelectNodes("//div[contains(@class,'notice-item')]");
+                if (items == null || items.Count == 0)
+                {
+                    _logger.LogInformation("Нет элементов конференций на странице {Page}, завершаем", page);
+                    break;
+                }
+
+                foreach (var item in items)
+                {
+                    var linkNode = item.SelectSingleNode(".//div[contains(@class,'notice-item-title')]/a");
+                    if (linkNode == null) continue;
+                    string href = linkNode.GetAttributeValue("href", "");
+                    if (string.IsNullOrEmpty(href)) continue;
+                    string absoluteUrl = BuildAbsoluteUrl("https://na-konferencii.ru", href);
+                    absoluteUrl = NormalizeUrl(absoluteUrl);
+                    if (string.IsNullOrEmpty(absoluteUrl)) continue;
+                    conferenceUrls.Add(absoluteUrl);
+
+                    var locationNode = item.SelectSingleNode(".//div[contains(@class,'notice-item-top-location')]//p");
+                    if (locationNode != null)
+                    {
+                        string locationText = CleanText(locationNode.InnerText);
+                        var (city, country) = ParseCityCountryFromLocationString(locationText);
+                        if (!conferenceLocations.ContainsKey(absoluteUrl))
+                            conferenceLocations[absoluteUrl] = (city, country);
+                    }
+                }
+                _logger.LogInformation("Собрано {Count} уникальных ссылок, всего {Total}", conferenceUrls.Count, page);
+                await Task.Delay(200, cancellationToken);
+            }
+
+            _logger.LogInformation("Всего собрано ссылок: {Count}", conferenceUrls.Count);
+
+            using var detailsClient = new HttpClient();
+            detailsClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+            foreach (var confUrl in conferenceUrls)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    _logger.LogInformation("Парсинг детальной страницы: {Url}", confUrl);
+                    var html = await detailsClient.GetStringAsync(confUrl, cancellationToken);
+                    var conference = ParseConferenceDetailsPage(html, confUrl, conferenceLocations);
+                    if (conference != null && !string.IsNullOrWhiteSpace(conference.Title))
+                    {
+                        result.Add(conference);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Не удалось распарсить конференцию: {Url}", confUrl);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Ошибка парсинга {Url}", confUrl);
+                }
+            }
+
+            var finalResult = result
+                .GroupBy(x => NormalizeUrl(x.Url))
+                .Select(g => g.First())
+                .GroupBy(x => $"{x.Title.Trim().ToLowerInvariant()}|{x.StartDate:yyyy-MM-dd}")
+                .Select(g => g.First())
+                .ToList();
+
+            _logger.LogInformation("Итоговое количество уникальных конференций: {Count}", finalResult.Count);
+            return finalResult;
+        }
+
+        public async Task<List<ConferenceImportModel>> ParseAnnouncementsAsync(CancellationToken cancellationToken = default)
+        {
+            var result = new List<ConferenceImportModel>();
+            var conferenceUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var conferenceLocations = new Dictionary<string, (string? city, string? country)>(StringComparer.OrdinalIgnoreCase);
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
+            client.DefaultRequestHeaders.Referrer = new Uri("https://na-konferencii.ru/anonsy-nauchnyh-meroprijatij");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+            var nonce = "ce5f0f90d3";
+            var baseParams = new List<KeyValuePair<string, string>>
+            {
+                new("action", "filterhome"),
+                new("nonce", nonce),
+                new("past_events", "0"),
+                new("actual_events", "1"),
+                new("period_start", ""),
+                new("period_end", DateTime.Now.ToString("dd/MM/yyyy")),
+                new("location", ""),
+                new("search_type", ""),
+                new("autor_id", "0"),
+                new("search_keyword", ""),
+                new("application", "")
+            };
+
+            const int totalPages = 9;
+            for (int page = 1; page <= totalPages; page++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                _logger.LogInformation("Обработка страницы анонсов {Page} из {Total}", page, totalPages);
+
+                var parameters = new List<KeyValuePair<string, string>>(baseParams)
+        {
+            new("page", page.ToString())
+        };
+                var content = new FormUrlEncodedContent(parameters);
+
+                string html = null;
+                const int maxRetries = 3;
+                for (int retry = 1; retry <= maxRetries; retry++)
+                {
+                    try
+                    {
+                        var response = await client.PostAsync("https://na-konferencii.ru/wp-admin/admin-ajax.php", content, cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        html = await response.Content.ReadAsStringAsync(cancellationToken);
+                        break;
+                    }
+                    catch (Exception ex) when (retry < maxRetries)
+                    {
+                        _logger.LogWarning(ex, "Ошибка запроса для страницы анонсов {Page}, попытка {Retry} из {MaxRetries}", page, retry, maxRetries);
+                        await Task.Delay(2000 * retry, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Ошибка запроса для страницы анонсов {Page} после {MaxRetries} попыток", page, maxRetries);
+                        break;
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(html) || html.Length < 100) break;
+
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
+                var items = doc.DocumentNode.SelectNodes("//div[contains(@class,'notice-item')]");
+                if (items == null || items.Count == 0) break;
+
+                foreach (var item in items)
+                {
+                    var linkNode = item.SelectSingleNode(".//div[contains(@class,'notice-item-title')]/a");
+                    if (linkNode == null) continue;
+                    string href = linkNode.GetAttributeValue("href", "");
+                    if (string.IsNullOrEmpty(href)) continue;
+                    string absoluteUrl = BuildAbsoluteUrl("https://na-konferencii.ru", href);
+                    absoluteUrl = NormalizeUrl(absoluteUrl);
+                    if (string.IsNullOrEmpty(absoluteUrl)) continue;
+                    conferenceUrls.Add(absoluteUrl);
+
+                    var locationNode = item.SelectSingleNode(".//div[contains(@class,'notice-item-top-location')]//p");
+                    if (locationNode != null)
+                    {
+                        string locationText = CleanText(locationNode.InnerText);
+                        var (city, country) = ParseCityCountryFromLocationString(locationText);
+                        if (!conferenceLocations.ContainsKey(absoluteUrl))
+                            conferenceLocations[absoluteUrl] = (city, country);
+                    }
+                }
+                _logger.LogInformation("Собрано {Count} уникальных ссылок из анонсов (страница {Page})", conferenceUrls.Count, page);
+                await Task.Delay(200, cancellationToken);
+            }
+
+            using var detailsClient = new HttpClient();
+            detailsClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+            foreach (var confUrl in conferenceUrls)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    _logger.LogInformation("Парсинг детальной страницы (анонс): {Url}", confUrl);
+                    var html = await detailsClient.GetStringAsync(confUrl, cancellationToken);
+                    var conference = ParseConferenceDetailsPage(html, confUrl, conferenceLocations);
+                    if (conference != null && !string.IsNullOrWhiteSpace(conference.Title))
+                        result.Add(conference);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Ошибка парсинга {Url}", confUrl);
+                }
+            }
+
+            var finalResult = result
+                .GroupBy(x => NormalizeUrl(x.Url))
+                .Select(g => g.First())
+                .GroupBy(x => $"{x.Title.Trim().ToLowerInvariant()}|{x.StartDate:yyyy-MM-dd}")
+                .Select(g => g.First())
+                .ToList();
+
+            _logger.LogInformation("Итоговое количество уникальных конференций (анонсы): {Count}", finalResult.Count);
+            return finalResult;
         }
     }
 }

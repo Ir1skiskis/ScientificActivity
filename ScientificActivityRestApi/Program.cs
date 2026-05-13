@@ -101,11 +101,11 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var tagPopulationLogic = scope.ServiceProvider.GetRequiredService<ITagPopulationLogic>();
-    tagPopulationLogic.PopulateTags();
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var tagPopulationLogic = scope.ServiceProvider.GetRequiredService<ITagPopulationLogic>();
+//    tagPopulationLogic.PopulateTags();
+//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

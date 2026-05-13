@@ -143,6 +143,7 @@ else
                 <th>Город</th>
                 <th>Страна</th>
                 <th>Организатор</th>
+                <th>Тематики</th>
                 <th>Ссылка</th>
                 @if (APIClient.Researcher?.Role == UserRole.Администратор)
                 {
@@ -171,6 +172,7 @@ else
                     <td>@(string.IsNullOrWhiteSpace(item.City) ? "-" : item.City)</td>
                     <td>@(string.IsNullOrWhiteSpace(item.Country) ? "-" : item.Country)</td>
                     <td>@(string.IsNullOrWhiteSpace(item.Organizer) ? "-" : item.Organizer)</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.SubjectArea) ? "-" : item.SubjectArea)</td>
 
                     <td>
                         @if (!string.IsNullOrWhiteSpace(item.Url))
@@ -216,6 +218,7 @@ else
                        asp-route-city="@cityValue"
                        asp-route-country="@countryValue"
                        asp-route-organizer="@organizerValue"
+                       asp-route-subject="@ViewBag.SubjectValue"
                        asp-route-onlyUpcoming="@onlyUpcomingChecked"
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
@@ -233,6 +236,7 @@ else
                        asp-route-city="@cityValue"
                        asp-route-country="@countryValue"
                        asp-route-organizer="@organizerValue"
+                       asp-route-subject="@ViewBag.SubjectValue"
                        asp-route-onlyUpcoming="@onlyUpcomingChecked"
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
@@ -252,6 +256,7 @@ else
                            asp-route-city="@cityValue"
                            asp-route-country="@countryValue"
                            asp-route-organizer="@organizerValue"
+                           asp-route-subject="@ViewBag.SubjectValue"
                            asp-route-onlyUpcoming="@onlyUpcomingChecked"
                            asp-route-startDateFrom="@startDateFromValue"
                            asp-route-startDateTo="@startDateToValue"
@@ -270,6 +275,7 @@ else
                        asp-route-city="@cityValue"
                        asp-route-country="@countryValue"
                        asp-route-organizer="@organizerValue"
+                       asp-route-subject="@ViewBag.SubjectValue"
                        asp-route-onlyUpcoming="@onlyUpcomingChecked"
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
@@ -287,6 +293,7 @@ else
                        asp-route-city="@cityValue"
                        asp-route-country="@countryValue"
                        asp-route-organizer="@organizerValue"
+                       asp-route-subject="@ViewBag.SubjectValue"
                        asp-route-onlyUpcoming="@onlyUpcomingChecked"
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
