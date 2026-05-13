@@ -1,12 +1,138 @@
 ﻿@model ScientificActivityContracts.ViewModels.RecommendationResultViewModel
+@using ScientificActivityClientApp
+@using ScientificActivityDataModels.Enums
 
 @{
     ViewData["Title"] = "Мои рекомендации";
 }
 
+<style>
+    .recommendation-card {
+        max-height: 360px;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+        position: relative;
+    }
+
+        .recommendation-card.expanded {
+            max-height: 2000px;
+        }
+
+    .recommendation-description {
+        max-height: 72px;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+        position: relative;
+    }
+
+    .recommendation-card.expanded .recommendation-description {
+        max-height: none;
+    }
+
+    .recommendation-description::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 28px;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
+        pointer-events: none;
+    }
+
+    .recommendation-card.expanded .recommendation-description::after {
+        display: none;
+    }
+
+    .recommendation-tags {
+        max-height: 48px;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+    }
+
+    .recommendation-card.expanded .recommendation-tags {
+        max-height: none;
+    }
+
+    .recommendation-toggle {
+        border: none;
+        background: transparent;
+        color: #0d6efd;
+        padding: 0;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+    }
+
+        .recommendation-toggle:hover {
+            color: #0a58ca;
+            text-decoration: underline;
+        }
+
+    .recommendation-toggle-icon {
+        display: inline-block;
+        transition: transform 0.25s ease;
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    .recommendation-card.expanded .recommendation-toggle-icon {
+        transform: rotate(180deg);
+    }
+
+    .recommendation-card-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .recommendation-card.expanded .recommendation-card-title {
+        display: block;
+        overflow: visible;
+    }
+
+    .recommendation-section-title {
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
 <h2 class="mb-4">Мои рекомендации</h2>
 
-<h4>Гранты</h4>
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (APIClient.Researcher?.Role == UserRole.Администратор)
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-body">
+            <h5 class="card-title">Управление рекомендациями</h5>
+            <p class="card-text text-muted mb-3">
+                Кнопка пересоздаёт связи тегов с актуальными конференциями, актуальными грантами и журналами.
+                Используйте её после импорта или обновления данных.
+            </p>
+
+            <form method="post" asp-action="RegenerateTags">
+                <button type="submit" class="btn btn-warning">
+                    Сформировать теги для рекомендаций
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+<h4 class="recommendation-section-title">Гранты</h4>
+
 @if (Model.Grants.Count == 0)
 {
     <div class="alert alert-info">Подходящих грантов не найдено.</div>
@@ -17,24 +143,58 @@ else
         @foreach (var item in Model.Grants)
         {
             <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">@item.Title</h5>
-                        <p class="card-text">@item.Description</p>
-                        <p><b>Совпадений:</b> @item.MatchCount</p>
-                        <p><b>Теги:</b> @string.Join(", ", item.MatchedTags)</p>
+                <div class="card h-100 recommendation-card">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title recommendation-card-title">@item.Title</h5>
+
+                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                        {
+                            <div class="card-text recommendation-description mb-2">
+                                @item.Description
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card-text text-muted mb-2">
+                                Описание отсутствует.
+                            </div>
+                        }
+
+                        <p class="mb-1"><b>Совпадений:</b> @item.MatchCount</p>
+
+                        <div class="recommendation-tags mb-2">
+                            <b>Теги:</b>
+                            @if (item.MatchedTags != null && item.MatchedTags.Any())
+                            {
+                                @string.Join(", ", item.MatchedTags)
+                            }
+                            else
+                            {
+                                <span class="text-muted">не указаны</span>
+                            }
+                        </div>
+
                         @if (item.DateFrom.HasValue)
                         {
-                            <p><b>Начало:</b> @item.DateFrom.Value.ToString("dd.MM.yyyy")</p>
+                            <p class="mb-1"><b>Начало:</b> @item.DateFrom.Value.ToString("dd.MM.yyyy")</p>
                         }
+
                         @if (item.DateTo.HasValue)
                         {
-                            <p><b>Окончание:</b> @item.DateTo.Value.ToString("dd.MM.yyyy")</p>
+                            <p class="mb-1"><b>Окончание:</b> @item.DateTo.Value.ToString("dd.MM.yyyy")</p>
                         }
-                        @if (!string.IsNullOrWhiteSpace(item.Url))
-                        {
-                            <a href="@item.Url" target="_blank" class="btn btn-outline-primary">Открыть</a>
-                        }
+
+                        <div class="mt-auto pt-2 d-flex justify-content-between align-items-center">
+                            <button type="button" class="recommendation-toggle" onclick="toggleRecommendationCard(this)">
+                                <span class="recommendation-toggle-icon">⌄</span>
+                                <span class="recommendation-toggle-text">Показать полностью</span>
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(item.Url))
+                            {
+                                <a href="@item.Url" target="_blank" class="btn btn-outline-primary btn-sm">Открыть</a>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -42,7 +202,8 @@ else
     </div>
 }
 
-<h4 class="mt-4">Конференции</h4>
+<h4 class="recommendation-section-title">Конференции</h4>
+
 @if (Model.Conferences.Count == 0)
 {
     <div class="alert alert-info">Подходящих конференций не найдено.</div>
@@ -53,24 +214,58 @@ else
         @foreach (var item in Model.Conferences)
         {
             <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">@item.Title</h5>
-                        <p class="card-text">@item.Description</p>
-                        <p><b>Совпадений:</b> @item.MatchCount</p>
-                        <p><b>Теги:</b> @string.Join(", ", item.MatchedTags)</p>
+                <div class="card h-100 recommendation-card">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title recommendation-card-title">@item.Title</h5>
+
+                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                        {
+                            <div class="card-text recommendation-description mb-2">
+                                @item.Description
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card-text text-muted mb-2">
+                                Описание отсутствует.
+                            </div>
+                        }
+
+                        <p class="mb-1"><b>Совпадений:</b> @item.MatchCount</p>
+
+                        <div class="recommendation-tags mb-2">
+                            <b>Теги:</b>
+                            @if (item.MatchedTags != null && item.MatchedTags.Any())
+                            {
+                                @string.Join(", ", item.MatchedTags)
+                            }
+                            else
+                            {
+                                <span class="text-muted">не указаны</span>
+                            }
+                        </div>
+
                         @if (item.DateFrom.HasValue)
                         {
-                            <p><b>Начало:</b> @item.DateFrom.Value.ToString("dd.MM.yyyy")</p>
+                            <p class="mb-1"><b>Начало:</b> @item.DateFrom.Value.ToString("dd.MM.yyyy")</p>
                         }
+
                         @if (item.DateTo.HasValue)
                         {
-                            <p><b>Окончание:</b> @item.DateTo.Value.ToString("dd.MM.yyyy")</p>
+                            <p class="mb-1"><b>Окончание:</b> @item.DateTo.Value.ToString("dd.MM.yyyy")</p>
                         }
-                        @if (!string.IsNullOrWhiteSpace(item.Url))
-                        {
-                            <a href="@item.Url" target="_blank" class="btn btn-outline-primary">Открыть</a>
-                        }
+
+                        <div class="mt-auto pt-2 d-flex justify-content-between align-items-center">
+                            <button type="button" class="recommendation-toggle" onclick="toggleRecommendationCard(this)">
+                                <span class="recommendation-toggle-icon">⌄</span>
+                                <span class="recommendation-toggle-text">Показать полностью</span>
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(item.Url))
+                            {
+                                <a href="@item.Url" target="_blank" class="btn btn-outline-primary btn-sm">Открыть</a>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -78,7 +273,8 @@ else
     </div>
 }
 
-<h4 class="mt-4">Журналы</h4>
+<h4 class="recommendation-section-title">Журналы</h4>
+
 @if (Model.Journals.Count == 0)
 {
     <div class="alert alert-info">Подходящих журналов не найдено.</div>
@@ -89,19 +285,73 @@ else
         @foreach (var item in Model.Journals)
         {
             <div class="col-md-6 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">@item.Title</h5>
-                        <p class="card-text">@item.Description</p>
-                        <p><b>Совпадений:</b> @item.MatchCount</p>
-                        <p><b>Теги:</b> @string.Join(", ", item.MatchedTags)</p>
-                        @if (!string.IsNullOrWhiteSpace(item.Url))
+                <div class="card h-100 recommendation-card">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title recommendation-card-title">@item.Title</h5>
+
+                        @if (!string.IsNullOrWhiteSpace(item.Description))
                         {
-                            <a href="@item.Url" target="_blank" class="btn btn-outline-primary">Открыть</a>
+                            <div class="card-text recommendation-description mb-2">
+                                @item.Description
+                            </div>
                         }
+                        else
+                        {
+                            <div class="card-text text-muted mb-2">
+                                Описание отсутствует.
+                            </div>
+                        }
+
+                        <p class="mb-1"><b>Совпадений:</b> @item.MatchCount</p>
+
+                        <div class="recommendation-tags mb-2">
+                            <b>Теги:</b>
+                            @if (item.MatchedTags != null && item.MatchedTags.Any())
+                            {
+                                @string.Join(", ", item.MatchedTags)
+                            }
+                            else
+                            {
+                                <span class="text-muted">не указаны</span>
+                            }
+                        </div>
+
+                        <div class="mt-auto pt-2 d-flex justify-content-between align-items-center">
+                            <button type="button" class="recommendation-toggle" onclick="toggleRecommendationCard(this)">
+                                <span class="recommendation-toggle-icon">⌄</span>
+                                <span class="recommendation-toggle-text">Показать полностью</span>
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(item.Url))
+                            {
+                                <a href="@item.Url" target="_blank" class="btn btn-outline-primary btn-sm">Открыть</a>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         }
     </div>
 }
+
+<script>
+    function toggleRecommendationCard(button) {
+        const card = button.closest('.recommendation-card');
+        const text = button.querySelector('.recommendation-toggle-text');
+        const icon = button.querySelector('.recommendation-toggle-icon');
+
+        if (!card || !text || !icon) {
+            return;
+        }
+
+        card.classList.toggle('expanded');
+
+        if (card.classList.contains('expanded')) {
+            text.textContent = 'Свернуть';
+            icon.textContent = '⌃';
+        } else {
+            text.textContent = 'Показать полностью';
+            icon.textContent = '⌄';
+        }
+    }
+</script>

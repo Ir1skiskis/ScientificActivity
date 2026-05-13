@@ -298,18 +298,48 @@ namespace ScientificActivityClientApp.Controllers
 
         private void FillProfileViewBags()
         {
-            FillELibraryProfileViewBag();
-
-            if (APIClient.Researcher != null)
+            try
             {
-                ViewBag.AllTags = APIClient.GetRequest<List<TagViewModel>>("api/Tag/GetSelectableTags") ?? new List<TagViewModel>();
-                ViewBag.SelectedTags = APIClient.GetRequest<List<TagViewModel>>(
-                    $"api/Tag/GetResearcherTags?researcherId={APIClient.Researcher.Id}") ?? new List<TagViewModel>();
+                ViewBag.AllTags = APIClient.GetSelectableTags() ?? new List<TagViewModel>();
             }
-            else
+            catch (Exception ex)
             {
                 ViewBag.AllTags = new List<TagViewModel>();
+                ViewBag.Error = $"Не удалось загрузить список тегов: {ex.Message}";
+            }
+
+            try
+            {
+                if (APIClient.Researcher != null)
+                {
+                    ViewBag.SelectedTags = APIClient.GetResearcherTags(APIClient.Researcher.Id) ?? new List<TagViewModel>();
+                }
+                else
+                {
+                    ViewBag.SelectedTags = new List<TagViewModel>();
+                }
+            }
+            catch (Exception ex)
+            {
                 ViewBag.SelectedTags = new List<TagViewModel>();
+                ViewBag.Error = $"Не удалось загрузить выбранные теги: {ex.Message}";
+            }
+
+            try
+            {
+                if (APIClient.Researcher != null)
+                {
+                    ViewBag.ELibraryProfile = APIClient.GetStoredELibraryProfile(APIClient.Researcher.Id);
+                }
+                else
+                {
+                    ViewBag.ELibraryProfile = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.ELibraryProfile = null;
+                ViewBag.Error = $"Не удалось загрузить сохранённый профиль eLibrary: {ex.Message}";
             }
         }
 

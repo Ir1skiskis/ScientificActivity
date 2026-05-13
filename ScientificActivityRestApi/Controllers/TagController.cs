@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.BusinessLogicsContracts;
+using ScientificActivityContracts.ViewModels;
 
 namespace ScientificActivityRestApi.Controllers
 {
@@ -8,19 +9,19 @@ namespace ScientificActivityRestApi.Controllers
     [ApiController]
     public class TagController : ControllerBase
     {
-        private readonly ITagLogic _logic;
+        private readonly ITagLogic _tagLogic;
 
-        public TagController(ITagLogic logic)
+        public TagController(ITagLogic tagLogic)
         {
-            _logic = logic;
+            _tagLogic = tagLogic;
         }
 
         [HttpGet]
-        public IActionResult GetSelectableTags()
+        public ActionResult<List<TagViewModel>> GetSelectableTags()
         {
             try
             {
-                return Ok(_logic.ReadList(true));
+                return Ok(_tagLogic.GetSelectableTags());
             }
             catch (Exception ex)
             {
@@ -29,11 +30,11 @@ namespace ScientificActivityRestApi.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetResearcherTags(int researcherId)
+        public ActionResult<List<TagViewModel>> GetConferenceTags()
         {
             try
             {
-                return Ok(_logic.GetResearcherTags(researcherId));
+                return Ok(_tagLogic.GetConferenceTags());
             }
             catch (Exception ex)
             {
@@ -41,13 +42,25 @@ namespace ScientificActivityRestApi.Controllers
             }
         }
 
-        [HttpPost]
-        public IActionResult SaveResearcherTags([FromBody] ResearcherTagBindingModel model)
+        [HttpGet]
+        public ActionResult<List<TagViewModel>> GetGrantTags()
         {
             try
             {
-                _logic.SaveResearcherTags(model);
-                return Ok(true);
+                return Ok(_tagLogic.GetGrantTags());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet]
+        public ActionResult<List<TagViewModel>> GetJournalTags()
+        {
+            try
+            {
+                return Ok(_tagLogic.GetJournalTags());
             }
             catch (Exception ex)
             {

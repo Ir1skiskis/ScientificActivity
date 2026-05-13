@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using ScientificActivityContracts.BusinessLogicsContracts;
 using ScientificActivityContracts.ViewModels;
 using ScientificActivityDatabaseImplement;
+using ScientificActivityDatabaseImplement.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -188,6 +189,58 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 .ThenBy(x => x.Title)
                 .Take(30)
                 .ToList();
+        }
+
+        public List<TagViewModel> GetResearcherTags(int researcherId)
+        {
+            return _context.ResearcherTags
+                .Where(x => x.ResearcherId == researcherId)
+                .Select(x => new TagViewModel
+                {
+                    Id = x.Tag.Id,
+                    Name = x.Tag.Name,
+                    NormalizedName = x.Tag.NormalizedName,
+                    IsActive = x.Tag.IsActive,
+                    IsSelectable = x.Tag.IsSelectable
+                })
+                .OrderBy(x => x.Name)
+                .ToList();
+        }
+
+        public void SaveResearcherTags(int researcherId, List<int> tagIds)
+        {
+            var researcher = _context.Researchers.FirstOrDefault(x => x.Id == researcherId);
+
+            if (researcher == null)
+            {
+                throw new InvalidOperationException("Исследователь не найден");
+            }
+
+            tagIds = tagIds
+                .Distinct()
+                .ToList();
+
+            var existingTags = _context.Tags
+                .Where(x => tagIds.Contains(x.Id))
+                .Select(x => x.Id)
+                .ToList();
+
+            var oldLinks = _context.ResearcherTags
+                .Where(x => x.ResearcherId == researcherId)
+                .ToList();
+
+            _context.ResearcherTags.RemoveRange(oldLinks);
+
+            foreach (var tagId in existingTags)
+            {
+                _context.ResearcherTags.Add(new ResearcherTag
+                {
+                    ResearcherId = researcherId,
+                    TagId = tagId
+                });
+            }
+
+            _context.SaveChanges();
         }
     }
 }

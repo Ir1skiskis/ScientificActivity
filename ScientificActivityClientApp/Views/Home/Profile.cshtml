@@ -123,45 +123,264 @@
 
                 <h5 class="mb-3">Интересы для рекомендаций</h5>
 
-                <form method="post" asp-controller="Recommendation" asp-action="SaveResearcherTags">
-                    <div class="mb-3">
-                        <label class="form-label">Выберите теги</label>
-                        <select name="tagIds" class="form-select" multiple size="12">
-                            @foreach (var tag in allTags.OrderBy(x => x.Name))
-                            {
-                                if (selectedTagIds.Contains(tag.Id))
-                                {
-                                    <option value="@tag.Id" selected>@tag.Name</option>
-                                }
-                                else
-                                {
-                                    <option value="@tag.Id">@tag.Name</option>
-                                }
-                            }
-                        </select>
-                        <div class="form-text">
-                            Для выбора нескольких тегов зажмите Ctrl.
-                        </div>
-                    </div>
+                <form method="post" asp-controller="Recommendation" asp-action="SaveResearcherTags" id="researcherTagsForm">
+                    <div class="card border-light mb-3">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Поиск тегов</label>
+                                <input type="text"
+                                       id="tagSearchInput"
+                                       class="form-control"
+                                       placeholder="Введите код или название тега, например: 3.1.18, Кардиология, искусственный интеллект" />
 
-                    @if (selectedTags.Any())
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">Выбранные теги</label>
-                            <div>
-                                @foreach (var tag in selectedTags.OrderBy(x => x.Name))
+                                <div class="form-text">
+                                    Начните вводить код или название направления. Уже выбранные теги сохраняются даже после очистки поиска.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Найденные теги</label>
+
+                                <div id="tagSearchResults" class="border rounded p-2" style="max-height: 260px; overflow-y: auto;">
+                                    <div class="text-muted">
+                                        Введите текст для поиска тегов.
+                                    </div>
+                                </div>
+
+                                <div class="form-text">
+                                    Можно выбрать несколько тегов. Для выбора больше не нужно зажимать Ctrl.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Выбранные теги</label>
+
+                                <div id="selectedTagsContainer" class="border rounded p-2 min-vh-25">
+                                    @if (selectedTags.Any())
+                                    {
+                                        @foreach (var tag in selectedTags.OrderBy(x => x.Name))
+                                        {
+                                            <span class="badge bg-secondary me-1 mb-1 selected-tag-badge"
+                                                  data-tag-id="@tag.Id">
+                                                @tag.Name
+                                                <button type="button"
+                                                        class="btn-close btn-close-white ms-1 remove-selected-tag-btn"
+                                                        aria-label="Удалить тег"
+                                                        data-tag-id="@tag.Id">
+                                                </button>
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted" id="noSelectedTagsText">Теги пока не выбраны.</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div id="hiddenSelectedTags">
+                                @foreach (var tag in selectedTags)
                                 {
-                                    <span class="badge bg-secondary me-1 mb-1">@tag.Name</span>
+                                    <input type="hidden" name="tagIds" value="@tag.Id" data-tag-id="@tag.Id" />
                                 }
                             </div>
-                        </div>
-                    }
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-outline-primary">Сохранить интересы для рекомендаций</button>
-                        <a asp-controller="Recommendation" asp-action="Index" class="btn btn-success">Перейти к рекомендациям</a>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    Сохранить интересы для рекомендаций
+                                </button>
+
+                                <a asp-controller="Recommendation" asp-action="Index" class="btn btn-success">
+                                    Перейти к рекомендациям
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </form>
+
+                <script>
+                    const allTags = [
+                        @foreach (var tag in allTags.OrderBy(x => x.Name))
+                        {
+                                <text>{ id: @tag.Id, name: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(tag.Name)) },</text>
+                        }
+                    ];
+
+                    const selectedTagIds = new Set([
+                        @foreach (var tagId in selectedTagIds)
+                        {
+                                <text>@tagId,</text>
+                        }
+                    ]);
+
+                    const tagSearchInput = document.getElementById('tagSearchInput');
+                    const tagSearchResults = document.getElementById('tagSearchResults');
+                    const selectedTagsContainer = document.getElementById('selectedTagsContainer');
+                    const hiddenSelectedTags = document.getElementById('hiddenSelectedTags');
+
+                    function normalizeText(value) {
+                        return value
+                            .toString()
+                            .toLowerCase()
+                            .replaceAll('ё', 'е')
+                            .trim();
+                    }
+
+                    function renderSearchResults() {
+                        const query = normalizeText(tagSearchInput.value);
+
+                        tagSearchResults.innerHTML = '';
+
+                        if (query.length < 2) {
+                            tagSearchResults.innerHTML = '<div class="text-muted">Введите минимум 2 символа для поиска.</div>';
+                            return;
+                        }
+
+                        const foundTags = allTags
+                            .filter(tag => normalizeText(tag.name).includes(query))
+                            .slice(0, 80);
+
+                        if (foundTags.length === 0) {
+                            tagSearchResults.innerHTML = '<div class="text-muted">По вашему запросу теги не найдены.</div>';
+                            return;
+                        }
+
+                        foundTags.forEach(tag => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'form-check mb-1';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.className = 'form-check-input';
+                            checkbox.type = 'checkbox';
+                            checkbox.id = `tag-checkbox-${tag.id}`;
+                            checkbox.value = tag.id;
+                            checkbox.checked = selectedTagIds.has(tag.id);
+
+                            checkbox.addEventListener('change', function () {
+                                if (this.checked) {
+                                    addSelectedTag(tag.id, tag.name);
+                                } else {
+                                    removeSelectedTag(tag.id);
+                                }
+                            });
+
+                            const label = document.createElement('label');
+                            label.className = 'form-check-label';
+                            label.htmlFor = `tag-checkbox-${tag.id}`;
+                            label.textContent = tag.name;
+
+                            wrapper.appendChild(checkbox);
+                            wrapper.appendChild(label);
+
+                            tagSearchResults.appendChild(wrapper);
+                        });
+                    }
+
+                                        function addSelectedTag(tagId, tagName) {
+                        selectedTagIds.add(tagId);
+
+                        const noSelectedTagsText = document.getElementById('noSelectedTagsText');
+                        if (noSelectedTagsText) {
+                            noSelectedTagsText.remove();
+                        }
+
+                        const existingBadge = selectedTagsContainer.querySelector(`.selected-tag-badge[data-tag-id="${tagId}"]`);
+                        if (!existingBadge) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-secondary me-1 mb-1 selected-tag-badge';
+                            badge.dataset.tagId = tagId;
+
+                            const text = document.createTextNode(tagName + ' ');
+                            badge.appendChild(text);
+
+                            const removeButton = document.createElement('button');
+                            removeButton.type = 'button';
+                            removeButton.className = 'btn-close btn-close-white ms-1 remove-selected-tag-btn';
+                            removeButton.setAttribute('aria-label', 'Удалить тег');
+                            removeButton.dataset.tagId = tagId;
+
+                            removeButton.addEventListener('click', function () {
+                                removeSelectedTag(tagId);
+                            });
+
+                            badge.appendChild(removeButton);
+                            selectedTagsContainer.appendChild(badge);
+                        }
+
+                        const existingInput = hiddenSelectedTags.querySelector(`input[data-tag-id="${tagId}"]`);
+                        if (!existingInput) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'tagIds';
+                            input.value = tagId;
+                            input.dataset.tagId = tagId;
+
+                            hiddenSelectedTags.appendChild(input);
+                        }
+
+                        updateVisibleCheckboxes();
+                    }
+
+                    function removeSelectedTag(tagId) {
+                        selectedTagIds.delete(tagId);
+
+                        const badge = selectedTagsContainer.querySelector(`[data-tag-id="${tagId}"]`);
+                        if (badge) {
+                            badge.remove();
+                        }
+
+                        const input = hiddenSelectedTags.querySelector(`input[data-tag-id="${tagId}"]`);
+                        if (input) {
+                            input.remove();
+                        }
+
+                        if (selectedTagIds.size === 0) {
+                            selectedTagsContainer.innerHTML = '<span class="text-muted" id="noSelectedTagsText">Теги пока не выбраны.</span>';
+                        }
+
+                        updateVisibleCheckboxes();
+                    }
+
+                    function updateVisibleCheckboxes() {
+                        const checkboxes = tagSearchResults.querySelectorAll('input[type="checkbox"]');
+
+                        checkboxes.forEach(checkbox => {
+                            const tagId = Number(checkbox.value);
+                            checkbox.checked = selectedTagIds.has(tagId);
+                        });
+                    }
+
+                    function initializeSelectedTagRemoveButtons() {
+                        const removeButtons = selectedTagsContainer.querySelectorAll('.remove-selected-tag-btn');
+
+                        removeButtons.forEach(button => {
+                            button.addEventListener('click', function () {
+                                const tagId = Number(this.dataset.tagId);
+                                removeSelectedTag(tagId);
+                            });
+                        });
+                    }
+
+                    tagSearchInput.addEventListener('input', renderSearchResults);
+                    initializeSelectedTagRemoveButtons();
+                </script>
+
+                <style>
+                    .selected-tag-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        white-space: normal;
+                        text-align: left;
+                        max-width: 100%;
+                    }
+
+                        .selected-tag-badge .btn-close {
+                            width: 0.55rem;
+                            height: 0.55rem;
+                            padding: 0.15rem;
+                            flex-shrink: 0;
+                        }
+                </style>
 
                 @{
                     var eLibraryProfile = ViewBag.ELibraryProfile as ELibraryAuthorProfileViewModel;

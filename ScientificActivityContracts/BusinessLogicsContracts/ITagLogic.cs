@@ -10,8 +10,9 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
 {
     public interface ITagLogic
     {
-        List<TagViewModel> ReadList(bool onlySelectable = true);
-        void SaveResearcherTags(ResearcherTagBindingModel model);
-        List<TagViewModel> GetResearcherTags(int researcherId);
+        List<TagViewModel> GetSelectableTags();
+        List<TagViewModel> GetConferenceTags();
+        List<TagViewModel> GetGrantTags();
+        List<TagViewModel> GetJournalTags();
     }
 }

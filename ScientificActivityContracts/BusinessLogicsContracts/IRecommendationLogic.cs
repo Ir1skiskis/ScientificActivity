@@ -10,5 +10,7 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
     public interface IRecommendationLogic
     {
         RecommendationResultViewModel GetRecommendations(int researcherId);
+        List<TagViewModel> GetResearcherTags(int researcherId);
+        void SaveResearcherTags(int researcherId, List<int> tagIds);
     }
 }

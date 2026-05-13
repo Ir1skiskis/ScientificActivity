@@ -16,76 +16,120 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 {
     public class TagLogic : ITagLogic
     {
-        private readonly ILogger<TagLogic> _logger;
-        private readonly ITagStorage _tagStorage;
         private readonly ScientificActivityDatabase _context;
+        private readonly ILogger<TagLogic> _logger;
 
-        public TagLogic(
-            ILogger<TagLogic> logger,
-            ITagStorage tagStorage,
-            ScientificActivityDatabase context)
+        public TagLogic(ScientificActivityDatabase context, ILogger<TagLogic> logger)
         {
-            _logger = logger;
-            _tagStorage = tagStorage;
             _context = context;
+            _logger = logger;
         }
 
-        public List<TagViewModel> ReadList(bool onlySelectable = true)
+        public List<TagViewModel> GetSelectableTags()
         {
-            return _tagStorage.GetFilteredList(new TagSearchModel
-            {
-                OnlyActive = true,
-                OnlySelectable = onlySelectable
-            });
-        }
+            var today = DateTime.UtcNow.Date;
 
-        public List<TagViewModel> GetResearcherTags(int researcherId)
-        {
-            return _context.ResearcherTags
-                .AsNoTracking()
-                .Include(x => x.Tag)
-                .Where(x => x.ResearcherId == researcherId && x.Tag != null)
-                .OrderBy(x => x.Tag.Name)
+            var conferenceTagIds = _context.ConferenceTags
+                .Where(x => x.Conference.EndDate.Date >= today)
+                .Select(x => x.TagId);
+
+            var grantTagIds = _context.GrantTags
+                .Where(x => x.Grant.EndDate.Date >= today)
+                .Select(x => x.TagId);
+
+            var journalTagIds = _context.JournalTags
+                .Select(x => x.TagId);
+
+            var tagIds = conferenceTagIds
+                .Union(grantTagIds)
+                .Union(journalTagIds);
+
+            return _context.Tags
+                .Where(x => x.IsActive)
+                .Where(x => x.IsSelectable)
+                .Where(x => tagIds.Contains(x.Id))
+                .OrderBy(x => x.Name)
                 .Select(x => new TagViewModel
                 {
-                    Id = x.Tag.Id,
-                    Name = x.Tag.Name,
-                    NormalizedName = x.Tag.NormalizedName,
-                    IsActive = x.Tag.IsActive,
-                    IsSelectable = x.Tag.IsSelectable
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsActive = x.IsActive,
+                    IsSelectable = x.IsSelectable
                 })
                 .ToList();
         }
 
-        public void SaveResearcherTags(ResearcherTagBindingModel model)
+        public List<TagViewModel> GetConferenceTags()
         {
-            if (model == null)
-            {
-                throw new ArgumentNullException(nameof(model));
-            }
+            var today = DateTime.UtcNow.Date;
 
-            _logger.LogInformation("SaveResearcherTags. ResearcherId:{ResearcherId}", model.ResearcherId);
+            var tagIds = _context.ConferenceTags
+                .Where(x => x.Conference.EndDate.Date >= today)
+                .Select(x => x.TagId)
+                .Distinct();
 
-            var existing = _context.ResearcherTags
-                .Where(x => x.ResearcherId == model.ResearcherId)
-                .ToList();
-
-            _context.ResearcherTags.RemoveRange(existing);
-
-            var distinctTagIds = model.TagIds
-                .Distinct()
-                .ToList();
-
-            foreach (var tagId in distinctTagIds)
-            {
-                _context.ResearcherTags.Add(new ScientificActivityDatabaseImplement.Models.ResearcherTag
+            return _context.Tags
+                .Where(x => x.IsActive)
+                .Where(x => x.IsSelectable)
+                .Where(x => tagIds.Contains(x.Id))
+                .OrderBy(x => x.Name)
+                .Select(x => new TagViewModel
                 {
-                    ResearcherId = model.ResearcherId,
-                    TagId = tagId
-                });
-            }
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsActive = x.IsActive,
+                    IsSelectable = x.IsSelectable
+                })
+                .ToList();
+        }
 
-            _context.SaveChanges();
+        public List<TagViewModel> GetGrantTags()
+        {
+            var today = DateTime.UtcNow.Date;
+
+            var tagIds = _context.GrantTags
+                .Where(x => x.Grant.EndDate.Date >= today)
+                .Select(x => x.TagId)
+                .Distinct();
+
+            return _context.Tags
+                .Where(x => x.IsActive)
+                .Where(x => x.IsSelectable)
+                .Where(x => tagIds.Contains(x.Id))
+                .OrderBy(x => x.Name)
+                .Select(x => new TagViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsActive = x.IsActive,
+                    IsSelectable = x.IsSelectable
+                })
+                .ToList();
+        }
+
+        public List<TagViewModel> GetJournalTags()
+        {
+            var tagIds = _context.JournalTags
+                .Select(x => x.TagId)
+                .Distinct();
+
+            return _context.Tags
+                .Where(x => x.IsActive)
+                .Where(x => x.IsSelectable)
+                .Where(x => tagIds.Contains(x.Id))
+                .OrderBy(x => x.Name)
+                .Select(x => new TagViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsActive = x.IsActive,
+                    IsSelectable = x.IsSelectable
+                })
+                .ToList();
         }
     }
 }

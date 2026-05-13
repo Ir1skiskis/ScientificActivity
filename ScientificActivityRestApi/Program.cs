@@ -86,6 +86,7 @@ builder.Services.AddHttpClient<IRcsiSubjectCategoryParser, RcsiSubjectCategoryPa
 
 builder.Services.AddTransient<IELibraryAuthorProfileStorage, ELibraryAuthorProfileStorage>();
 builder.Services.AddTransient<IResearcherReportLogic, ResearcherReportLogic>();
+builder.Services.AddTransient<ITagGenerationLogic, TagGenerationLogic>();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

@@ -34,14 +34,14 @@ namespace ScientificActivityClientApp
         public static T? GetRequest<T>(string requestUrl)
         {
             var response = _httpClient.GetAsync(requestUrl).Result;
-            var result = response.Content.ReadAsStringAsync().Result;
+            var responseText = response.Content.ReadAsStringAsync().Result;
 
             if (response.IsSuccessStatusCode)
             {
-                return JsonConvert.DeserializeObject<T>(result);
+                return response.Content.ReadFromJsonAsync<T>().Result;
             }
 
-            throw new Exception(result);
+            throw new Exception($"GET {requestUrl} завершился ошибкой. StatusCode: {(int)response.StatusCode}. Ответ API: {responseText}");
         }
 
         public static void PostRequest<T>(string requestUrl, T model)
@@ -125,6 +125,109 @@ namespace ScientificActivityClientApp
             return await PostFileRequestAsync(
                 "api/ResearcherReport/DownloadDocx",
                 model);
+        }
+
+        public static async Task<(bool Success, int Count, string Error)> RegenerateAllTagsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync("api/TagGeneration/RegenerateAllTags", null);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return (false, 0, responseText);
+                }
+
+                if (int.TryParse(responseText, out var count))
+                {
+                    return (true, count, string.Empty);
+                }
+
+                return (false, 0, $"RestApi вернул неожиданный ответ: {responseText}");
+            }
+            catch (Exception ex)
+            {
+                return (false, 0, ex.Message);
+            }
+        }
+
+        public static async Task<int?> RegenerateConferenceTagsAsync()
+        {
+            var response = await _httpClient.PostAsync("api/TagGeneration/RegenerateConferenceTags", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<int>();
+        }
+
+        public static async Task<int?> RegenerateGrantTagsAsync()
+        {
+            var response = await _httpClient.PostAsync("api/TagGeneration/RegenerateGrantTags", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<int>();
+        }
+
+        public static async Task<int?> RegenerateJournalTagsAsync()
+        {
+            var response = await _httpClient.PostAsync("api/TagGeneration/RegenerateJournalTags", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<int>();
+        }
+
+        public static List<TagViewModel>? GetSelectableTags()
+        {
+            return GetRequest<List<TagViewModel>>("api/Tag/GetSelectableTags");
+        }
+
+        public static List<TagViewModel>? GetResearcherTags(int researcherId)
+        {
+            return GetRequest<List<TagViewModel>>($"api/Recommendation/GetResearcherTags?researcherId={researcherId}");
+        }
+
+        public static bool SaveResearcherTags(int researcherId, List<int> tagIds)
+        {
+            var model = new SaveResearcherTagsBindingModel
+            {
+                ResearcherId = researcherId,
+                TagIds = tagIds
+            };
+
+            var response = _httpClient.PostAsJsonAsync("api/Recommendation/SaveResearcherTags", model).Result;
+
+            return response.IsSuccessStatusCode;
+        }
+
+        public static ELibraryAuthorProfileViewModel? GetStoredELibraryProfile(int researcherId)
+        {
+            var response = _httpClient.GetAsync($"api/ELibrary/GetStoredAuthorProfile?researcherId={researcherId}").Result;
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            var responseText = response.Content.ReadAsStringAsync().Result;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"GET api/ELibrary/GetStoredAuthorProfile?researcherId={researcherId} завершился ошибкой. StatusCode: {(int)response.StatusCode}. Ответ API: {responseText}");
+            }
+
+            return response.Content.ReadFromJsonAsync<ELibraryAuthorProfileViewModel>().Result;
         }
     }
 }
