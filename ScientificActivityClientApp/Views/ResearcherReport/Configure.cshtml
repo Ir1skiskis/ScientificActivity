@@ -1,0 +1,150 @@
+﻿@model ScientificActivityContracts.BindingModels.ResearcherReportSettingsBindingModel
+
+@{
+    ViewData["Title"] = "Настройка отчета";
+}
+
+<h2 class="mb-4">Настройка отчета</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<form asp-action="Preview" method="post">
+    <input type="hidden" asp-for="ResearcherId" />
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Основные параметры
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label asp-for="ReportTitle" class="form-label">Название отчета</label>
+                <input asp-for="ReportTitle" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Состав отчета
+        </div>
+        <div class="card-body">
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeCommonInfo" class="form-check-input" />
+                <label asp-for="IncludeCommonInfo" class="form-check-label">
+                    Основные сведения об исследователе
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludePublicationSummary" class="form-check-input" />
+                <label asp-for="IncludePublicationSummary" class="form-check-label">
+                    Общие показатели публикационной активности
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeCitationIndexes" class="form-check-input" />
+                <label asp-for="IncludeCitationIndexes" class="form-check-label">
+                    Показатели цитирования и индексы
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeAdditionalMetrics" class="form-check-input" />
+                <label asp-for="IncludeAdditionalMetrics" class="form-check-label">
+                    Дополнительные наукометрические показатели
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeJournalMetrics" class="form-check-input" />
+                <label asp-for="IncludeJournalMetrics" class="form-check-label">
+                    Показатели журнальной активности
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeLastFiveYearsMetrics" class="form-check-input" />
+                <label asp-for="IncludeLastFiveYearsMetrics" class="form-check-label">
+                    Показатели за последние 5 лет
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeYearDynamics" class="form-check-input" />
+                <label asp-for="IncludeYearDynamics" class="form-check-label">
+                    Динамика показателей по годам
+                </label>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Публикации
+        </div>
+        <div class="card-body">
+
+            <div class="form-check mb-3">
+                <input asp-for="IncludePublications" class="form-check-input" />
+                <label asp-for="IncludePublications" class="form-check-label">
+                    Включить список публикаций
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeOnlyLastFiveYearsPublications" class="form-check-input" />
+                <label asp-for="IncludeOnlyLastFiveYearsPublications" class="form-check-label">
+                    Только публикации за последние 5 лет
+                </label>
+            </div>
+
+            <div class="form-check mb-2">
+                <input asp-for="IncludeOnlyVakPublications" class="form-check-input" />
+                <label asp-for="IncludeOnlyVakPublications" class="form-check-label">
+                    Только публикации ВАК
+                </label>
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="IncludeOnlyPublicationsWithDoi" class="form-check-input" />
+                <label asp-for="IncludeOnlyPublicationsWithDoi" class="form-check-label">
+                    Только публикации с DOI
+                </label>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PublicationsDateFrom" class="form-label">Дата публикации от</label>
+                    <input asp-for="PublicationsDateFrom" type="date" class="form-control" />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PublicationsDateTo" class="form-label">Дата публикации до</label>
+                    <input asp-for="PublicationsDateTo" type="date" class="form-control" />
+                </div>
+            </div>
+
+            <div class="alert alert-info mb-0">
+                Если даты не указаны, список публикаций будет отфильтрован только по выбранным признакам.
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-primary">
+            Предварительный просмотр
+        </button>
+
+        <a asp-controller="Researcher"
+           asp-action="Index"
+           class="btn btn-secondary">
+            Назад
+        </a>
+    </div>
+</form>

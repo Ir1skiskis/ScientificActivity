@@ -10,10 +10,13 @@ using ScientificActivityParsers.Interfaces;
 using ScientificActivityParsers.Parsers;
 using ScientificActivityParsers.Services;
 using System.Text;
+using QuestPDF.Infrastructure;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Logging.SetMinimumLevel(LogLevel.Trace);
 builder.Logging.AddLog4Net("log4net.config");
@@ -82,6 +85,7 @@ builder.Services.AddHttpClient<IRcsiLevelApiClient, RcsiLevelApiClient>();
 builder.Services.AddHttpClient<IRcsiSubjectCategoryParser, RcsiSubjectCategoryParser>();
 
 builder.Services.AddTransient<IELibraryAuthorProfileStorage, ELibraryAuthorProfileStorage>();
+builder.Services.AddTransient<IResearcherReportLogic, ResearcherReportLogic>();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

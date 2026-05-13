@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.ViewModels;
 using System.Net.Http.Headers;
 using System.Text;
@@ -71,6 +72,59 @@ namespace ScientificActivityClientApp
             }
 
             throw new Exception(result);
+        }
+
+        public static async Task<TResponse?> PostRequestAsync<TRequest, TResponse>(string requestUrl, TRequest model)
+        {
+            var json = JsonConvert.SerializeObject(model);
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(requestUrl, data);
+            var result = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return JsonConvert.DeserializeObject<TResponse>(result);
+            }
+
+            throw new Exception(result);
+        }
+
+        public static async Task<byte[]?> PostFileRequestAsync<TRequest>(string requestUrl, TRequest model)
+        {
+            var json = JsonConvert.SerializeObject(model);
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(requestUrl, data);
+            var result = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsByteArrayAsync();
+            }
+
+            throw new Exception(result);
+        }
+
+        public static async Task<ResearcherReportViewModel?> GetResearcherReportPreviewAsync(ResearcherReportSettingsBindingModel model)
+        {
+            return await PostRequestAsync<ResearcherReportSettingsBindingModel, ResearcherReportViewModel>(
+                "api/ResearcherReport/Preview",
+                model);
+        }
+
+        public static async Task<byte[]?> DownloadResearcherReportPdfAsync(ResearcherReportSettingsBindingModel model)
+        {
+            return await PostFileRequestAsync(
+                "api/ResearcherReport/DownloadPdf",
+                model);
+        }
+
+        public static async Task<byte[]?> DownloadResearcherReportDocxAsync(ResearcherReportSettingsBindingModel model)
+        {
+            return await PostFileRequestAsync(
+                "api/ResearcherReport/DownloadDocx",
+                model);
         }
     }
 }
