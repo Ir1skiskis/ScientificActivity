@@ -31,17 +31,30 @@ namespace ScientificActivityParsers.Parsers
             _logger = logger;
         }
 
-        public async Task<List<ConferenceImportModel>> ParseAsync(CancellationToken cancellationToken = default)
+        public async Task<List<ConferenceImportModel>> ParseAsync(bool includePast = true, bool includeAnnouncements = true, CancellationToken cancellationToken = default)
         {
-            var past = await ParsePastEventsAsync(cancellationToken);
-            var announcements = await ParseAnnouncementsAsync(cancellationToken);
-            var combined = past.Concat(announcements).ToList();
-            return combined
+            var allConferences = new List<ConferenceImportModel>();
+
+            if (includePast)
+            {
+                var past = await ParsePastEventsAsync(cancellationToken);
+                allConferences.AddRange(past);
+            }
+
+            if (includeAnnouncements)
+            {
+                var announcements = await ParseAnnouncementsAsync(cancellationToken);
+                allConferences.AddRange(announcements);
+            }
+
+            var finalResult = allConferences
                 .GroupBy(x => NormalizeUrl(x.Url))
                 .Select(g => g.First())
                 .GroupBy(x => $"{x.Title.Trim().ToLowerInvariant()}|{x.StartDate:yyyy-MM-dd}")
                 .Select(g => g.First())
                 .ToList();
+
+            return finalResult;
         }
 
         private ConferenceImportModel? ParseConferenceDetailsPage(string html, string pageUrl, Dictionary<string, (string? city, string? country)>? locations)
@@ -710,18 +723,42 @@ namespace ScientificActivityParsers.Parsers
         {
             if (string.IsNullOrWhiteSpace(location))
                 return (null, null);
-            var parts = location.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length >= 2)
+
+            var parts = location.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(p => p.Trim())
+                                .Where(p => !string.IsNullOrEmpty(p))
+                                .ToList();
+
+            if (parts.Count == 0)
+                return (null, null);
+
+            string city = parts[0];
+            string? country = null;
+
+            if (parts.Count > 1)
             {
-                string city = parts[0].Trim();
-                string country = parts[1].Trim();
-                return (city, country);
+                var last = parts.Last();
+                var knownCountries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "Россия", "РФ", "Российская Федерация",
+                    "Узбекистан", "Казахстан", "Беларусь", "Республика Беларусь",
+                    "Таджикистан", "Кыргызстан", "Армения", "Азербайджан",
+                    "Грузия", "Австралия", "Венгрия", "Германия", "Франция",
+                    "Италия", "США", "Китай", "Индия", "Турция", "ОАЭ", "Египет",
+                    "Украина", "Молдова", "Литва", "Латвия", "Эстония", "Польша"
+                };
+
+                if (knownCountries.Contains(last))
+                {
+                    country = last;
+                }
+                else if (last.Equals("РФ", StringComparison.OrdinalIgnoreCase))
+                {
+                    country = "Россия";
+                }
             }
-            else if (parts.Length == 1)
-            {
-                return (null, parts[0].Trim());
-            }
-            return (null, null);
+
+            return (city, country);
         }
 
         public async Task<List<ConferenceImportModel>> ParsePastEventsAsync(CancellationToken cancellationToken = default)
@@ -735,7 +772,7 @@ namespace ScientificActivityParsers.Parsers
             client.DefaultRequestHeaders.Referrer = new Uri("https://na-konferencii.ru/proshedshie-meroprijatija");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
             // мб менять придется(f12-network)
-            var nonce = "ce5f0f90d3";
+            var nonce = "ba58571c6d";
             var baseParams = new List<KeyValuePair<string, string>>
             {
                 new("action", "filterhome"),
@@ -883,20 +920,22 @@ namespace ScientificActivityParsers.Parsers
             client.DefaultRequestHeaders.Referrer = new Uri("https://na-konferencii.ru/anonsy-nauchnyh-meroprijatij");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
 
-            var nonce = "ce5f0f90d3";
+            var nonce = "ba58571c6d";
             var baseParams = new List<KeyValuePair<string, string>>
             {
                 new("action", "filterhome"),
                 new("nonce", nonce),
                 new("past_events", "0"),
-                new("actual_events", "1"),
-                new("period_start", ""),
-                new("period_end", DateTime.Now.ToString("dd/MM/yyyy")),
+                new("actual_events", "0"),
+                new("period_start", DateTime.Now.ToString("dd/MM/yyyy")),
+                new("period_end", ""),
                 new("location", ""),
                 new("search_type", ""),
                 new("autor_id", "0"),
                 new("search_keyword", ""),
-                new("application", "")
+                new("application", ""),
+                new("zayavka_start", ""),
+                new("zayavka_end", "")
             };
 
             const int totalPages = 9;
@@ -906,9 +945,9 @@ namespace ScientificActivityParsers.Parsers
                 _logger.LogInformation("Обработка страницы анонсов {Page} из {Total}", page, totalPages);
 
                 var parameters = new List<KeyValuePair<string, string>>(baseParams)
-        {
-            new("page", page.ToString())
-        };
+                {
+                    new("page", page.ToString())
+                };
                 var content = new FormUrlEncodedContent(parameters);
 
                 string html = null;
@@ -932,6 +971,12 @@ namespace ScientificActivityParsers.Parsers
                         _logger.LogError(ex, "Ошибка запроса для страницы анонсов {Page} после {MaxRetries} попыток", page, maxRetries);
                         break;
                     }
+                }
+                if (page == 1 && !string.IsNullOrWhiteSpace(html))
+                {
+                    var debugPath = Path.Combine(Path.GetTempPath(), $"anonsy_page1_{DateTime.Now:yyyyMMddHHmmss}.html");
+                    await File.WriteAllTextAsync(debugPath, html, cancellationToken);
+                    _logger.LogInformation("Сохранён ответ анонсов страницы 1 в {Path}", debugPath);
                 }
                 if (string.IsNullOrWhiteSpace(html) || html.Length < 100) break;
 

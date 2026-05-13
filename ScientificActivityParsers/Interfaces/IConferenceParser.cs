@@ -9,6 +9,9 @@ namespace ScientificActivityParsers.Interfaces
 {
     public interface IConferenceParser
     {
-        Task<List<ConferenceImportModel>> ParseAsync(CancellationToken cancellationToken = default);
+        Task<List<ConferenceImportModel>> ParseAsync(
+        bool includePast = true,
+        bool includeAnnouncements = true,
+        CancellationToken cancellationToken = default);
     }
 }

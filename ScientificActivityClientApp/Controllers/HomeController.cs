@@ -1285,7 +1285,7 @@ namespace ScientificActivityClientApp.Controllers
         }
 
         [HttpPost]
-        public IActionResult ImportConferences()
+        public IActionResult ImportConferences(string type = "Both")
         {
             try
             {
@@ -1295,9 +1295,15 @@ namespace ScientificActivityClientApp.Controllers
                     return RedirectToAction("Conferences");
                 }
 
-                APIClient.PostRequest("api/Import/ImportConferences", new { });
+                APIClient.PostRequest("api/Import/ImportConferences", new { Type = type });
 
-                TempData["Message"] = "Импорт конференций успешно запущен";
+                string message = type switch
+                {
+                    "Announcements" => "анонсов",
+                    "Past" => "прошедших",
+                    _ => "всех конференций"
+                };
+                TempData["Message"] = $"Импорт {message} успешно запущен";
                 return RedirectToAction("Conferences");
             }
             catch (Exception ex)

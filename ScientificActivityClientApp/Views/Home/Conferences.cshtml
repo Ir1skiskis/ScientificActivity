@@ -36,8 +36,14 @@
 @if (APIClient.Researcher?.Role == UserRole.Администратор)
 {
     <div class="mb-3 d-flex gap-2">
-        <form method="post" asp-action="ImportConferences">
-            <button type="submit" class="btn btn-success">Импортировать конференции</button>
+        <form method="post" asp-action="ImportConferences" asp-route-type="Announcements">
+            <button type="submit" class="btn btn-info">Импорт анонсов</button>
+        </form>
+        <form method="post" asp-action="ImportConferences" asp-route-type="Past">
+            <button type="submit" class="btn btn-warning">Импорт прошедших</button>
+        </form>
+        <form method="post" asp-action="ImportConferences" asp-route-type="Both">
+            <button type="submit" class="btn btn-success">Импорт всех</button>
         </form>
     </div>
 }
@@ -140,7 +146,7 @@ else
                 <th>Название</th>
                 <th>Дата начала</th>
                 <th>Дата окончания</th>
-                <th>Город</th>
+                <th>Город/Посёлок</th>
                 <th>Страна</th>
                 <th>Организатор</th>
                 <th>Тематики</th>

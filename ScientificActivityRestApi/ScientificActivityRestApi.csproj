@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ScientificActivityBusinessLogics\ScientificActivityBusinessLogics.csproj" />
+    <ProjectReference Include="..\ScientificActivityClientApp\ScientificActivityClientApp.csproj" />
     <ProjectReference Include="..\ScientificActivityDatabaseImplement\ScientificActivityDatabaseImplement.csproj" />
     <ProjectReference Include="..\ScientificActivityParsers\ScientificActivityParsers.csproj" />
   </ItemGroup>

@@ -37,12 +37,17 @@ namespace ScientificActivityRestApi.Controllers
             }
         }
 
+        public class ImportRequest
+        {
+            public string Type { get; set; } = "Both";
+        }
+
         [HttpPost]
-        public async Task<IActionResult> ImportConferences()
+        public async Task<IActionResult> ImportConferences([FromBody] ImportRequest request)
         {
             try
             {
-                var count = await _importService.ImportConferencesAsync();
+                var count = await _importService.ImportConferencesAsync(request.Type);
                 return Ok(new { Message = $"Импорт конференций завершён. Обработано записей: {count}" });
             }
             catch (Exception ex)

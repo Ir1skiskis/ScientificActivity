@@ -124,9 +124,26 @@ namespace ScientificActivityParsers.Services
             return processedCount;
         }
 
-        public async Task<int> ImportConferencesAsync(CancellationToken cancellationToken = default)
+        public async Task<int> ImportConferencesAsync(string type = "Both", CancellationToken cancellationToken = default)
         {
-            var items = await _conferenceParser.ParseAsync(cancellationToken);
+            bool includePast, includeAnnouncements;
+            switch (type?.ToLower())
+            {
+                case "announcements":
+                    includePast = false;
+                    includeAnnouncements = true;
+                    break;
+                case "past":
+                    includePast = true;
+                    includeAnnouncements = false;
+                    break;
+                default:
+                    includePast = true;
+                    includeAnnouncements = true;
+                    break;
+            }
+
+            var items = await _conferenceParser.ParseAsync(includePast, includeAnnouncements, cancellationToken);
             var processedCount = 0;
 
             foreach (var item in items)
@@ -160,11 +177,7 @@ namespace ScientificActivityParsers.Services
                         Url = item.Url
                     });
 
-                    if (updated)
-                    {
-                        processedCount++;
-                    }
-
+                    if (updated) processedCount++;
                     continue;
                 }
 
@@ -183,10 +196,7 @@ namespace ScientificActivityParsers.Services
                     Url = item.Url
                 });
 
-                if (created)
-                {
-                    processedCount++;
-                }
+                if (created) processedCount++;
             }
 
             return processedCount;
