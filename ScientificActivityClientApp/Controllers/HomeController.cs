@@ -206,6 +206,18 @@ namespace ScientificActivityClientApp.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> OpenManualLogin()
+        {
+            var result = await APIClient.PostRequestAsync<object, string>(
+                "api/ELibrary/OpenManualLogin",
+                new object());
+
+            TempData["Message"] = result;
+
+            return RedirectToAction("Index");
+        }
+
         public IActionResult Profile()
         {
             if (APIClient.Researcher == null)

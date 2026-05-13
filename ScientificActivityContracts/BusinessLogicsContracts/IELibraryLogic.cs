@@ -21,5 +21,6 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
         bool ImportAuthorProfile(ELibraryImportBindingModel model);
 
         int ImportAuthorPublications(ELibraryImportBindingModel model);
+        void OpenELibraryForManualLogin();
     }
 }

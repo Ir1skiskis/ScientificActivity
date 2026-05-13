@@ -15,5 +15,6 @@ namespace ScientificActivityParsers.Interfaces
         ELibraryAuthorProfileViewModel? GetAuthorProfile(string authorId);
         List<ELibraryPublicationImportModel> GetAuthorPublications(string authorId);
         ELibraryPublicationCategoryInfoModel GetAuthorPublicationCategoryInfo(string authorId);
+        void OpenELibraryForManualLogin();
     }
 }

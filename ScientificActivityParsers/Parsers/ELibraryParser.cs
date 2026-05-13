@@ -122,7 +122,7 @@ namespace ScientificActivityParsers.Parsers
             }
 
             using var driver = CreateChromeDriver();
-            ApplyELibraryCookies(driver);
+            // ApplyELibraryCookies(driver);
 
             var result = new ELibraryPublicationCategoryInfoModel();
 
@@ -168,24 +168,26 @@ namespace ScientificActivityParsers.Parsers
 
         public ELibraryAuthorProfileViewModel? GetAuthorProfile(string authorId)
         {
+            // OpenELibraryForManualLogin();
+
             if (string.IsNullOrWhiteSpace(authorId))
             {
                 throw new ArgumentException("Не указан AuthorId");
             }
 
             using var driver = CreateChromeDriver();
-            ApplyELibraryCookies(driver);
+            // ApplyELibraryCookies(driver);
 
-            var url = $"https://elibrary.ru/author_profile.asp?id={authorId}";
-            var html = LoadPageHtml(driver, url, true);
+            var profileUrl = $"https://www.elibrary.ru/author_profile.asp?id={authorId}";
+            var profileHtml = LoadPageHtml(driver, profileUrl, true);
 
-            if (string.IsNullOrWhiteSpace(html))
+            if (string.IsNullOrWhiteSpace(profileHtml))
             {
                 return null;
             }
 
             var doc = new HtmlDocument();
-            doc.LoadHtml(html);
+            doc.LoadHtml(profileHtml);
 
             var profile = new ELibraryAuthorProfileViewModel
             {
@@ -207,18 +209,45 @@ namespace ScientificActivityParsers.Parsers
             }
 
             using var driver = CreateChromeDriver();
-            ApplyELibraryCookies(driver);
+            // ApplyELibraryCookies(driver);
 
-            var url = $"https://www.elibrary.ru/author_items.asp?authorid={authorId}&show_refs=1";
-            var html = LoadPageHtml(driver, url, true);
+            var debugDir = Path.Combine(AppContext.BaseDirectory, "elibrary-debug");
+            Directory.CreateDirectory(debugDir);
+
+            var profileUrl = $"https://www.elibrary.ru/author_profile.asp?id={authorId}";
+            var profileHtml = LoadPageHtml(driver, profileUrl, true);
+
+            File.WriteAllText(Path.Combine(debugDir, $"profile_before_publications_{authorId}.html"), profileHtml);
+
+            // WaitForManualContinue("Профиль автора открыт. Проверь в браузере, что eLibrary видит авторизацию.");
+
+            if (string.IsNullOrWhiteSpace(profileHtml))
+            {
+                Console.WriteLine("Профиль автора не загружен.");
+                return new List<ELibraryPublicationImportModel>();
+            }
+
+            if (!IsProbablyAuthorized(profileHtml))
+            {
+                Console.WriteLine("eLibrary, вероятно, не принял авторизацию. Проверь cookie или авторизацию в Chrome-профиле.");
+                return new List<ELibraryPublicationImportModel>();
+            }
+
+            var publicationsUrl = $"https://www.elibrary.ru/author_items.asp?authorid={authorId}&hide_doubles=1";
+            var html = LoadPageHtml(driver, publicationsUrl, true);
+
+            File.WriteAllText(Path.Combine(debugDir, $"author_items_{authorId}.html"), html);
 
             Console.WriteLine($"ELibrary author_items html length: {html.Length}");
+            Console.WriteLine($"Current url: {driver.Url}");
+            Console.WriteLine($"Title: {driver.Title}");
             Console.WriteLine($"Contains restab: {html.Contains("id=\"restab\"", StringComparison.OrdinalIgnoreCase)}");
             Console.WriteLine($"Contains arw: {html.Contains("id=\"arw", StringComparison.OrdinalIgnoreCase)}");
             Console.WriteLine($"Contains brw: {html.Contains("id=\"brw", StringComparison.OrdinalIgnoreCase)}");
-            Console.WriteLine($"Contains robot: {html.Contains("робот", StringComparison.OrdinalIgnoreCase)}");
-            Console.WriteLine($"Contains captcha: {html.Contains("captcha", StringComparison.OrdinalIgnoreCase)}");
-            Console.WriteLine($"Contains доступ ограничен: {html.Contains("доступ", StringComparison.OrdinalIgnoreCase) && html.Contains("огранич", StringComparison.OrdinalIgnoreCase)}");
+            Console.WriteLine($"Contains item.asp: {html.Contains("item.asp", StringComparison.OrdinalIgnoreCase)}");
+            Console.WriteLine($"Contains нарушение: {html.Contains("наруш", StringComparison.OrdinalIgnoreCase)}");
+            Console.WriteLine($"Contains правила: {html.Contains("правил", StringComparison.OrdinalIgnoreCase)}");
+            Console.WriteLine($"Contains авторизоваться: {html.Contains("авториз", StringComparison.OrdinalIgnoreCase)}");
 
             if (string.IsNullOrWhiteSpace(html))
             {
@@ -228,11 +257,40 @@ namespace ScientificActivityParsers.Parsers
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
-            var result = ParsePublicationList(doc);
-            Console.WriteLine($"ELibrary GetAuthorPublications parsed count: {result.Count}");
+            var publications = ParsePublicationList(doc);
 
-            foreach (var publication in result)
+            Console.WriteLine($"ELibrary GetAuthorPublications parsed count: {publications.Count}");
+
+            foreach (var publication in publications)
             {
+                if (string.IsNullOrWhiteSpace(publication.Url) &&
+                    !string.IsNullOrWhiteSpace(publication.ELibraryId))
+                {
+                    publication.Url = $"https://www.elibrary.ru/item.asp?id={publication.ELibraryId}";
+                }
+            }
+
+            return publications;
+        }
+
+        private static void WaitForManualContinue(string message)
+        {
+            Console.WriteLine(message);
+            Console.WriteLine("Нажми Enter в консоли, чтобы продолжить парсинг.");
+            Console.ReadLine();
+        }
+
+        public void EnrichPublicationsSlowly(IWebDriver driver, List<ELibraryPublicationImportModel> publications, int maxDetailsCount = 10)
+        {
+            var loadedCount = 0;
+
+            foreach (var publication in publications)
+            {
+                if (loadedCount >= maxDetailsCount)
+                {
+                    break;
+                }
+
                 if (string.IsNullOrWhiteSpace(publication.ELibraryId))
                 {
                     continue;
@@ -258,7 +316,10 @@ namespace ScientificActivityParsers.Parsers
                         publication.Url = detailUrl;
                     }
 
-                    Thread.Sleep(2000);
+                    loadedCount++;
+
+                    var delay = Random.Shared.Next(5000, 9000);
+                    Thread.Sleep(delay);
                 }
                 catch (Exception ex)
                 {
@@ -278,24 +339,31 @@ namespace ScientificActivityParsers.Parsers
                     {
                         Console.WriteLine($"Не удалось сохранить HTML деталки {publication.ELibraryId}: {saveEx.Message}");
                     }
-
-                    continue;
                 }
             }
-
-            return result;
         }
 
         private static IWebDriver CreateChromeDriver()
         {
             var options = new ChromeOptions();
+
+            var userDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ScientificActivity",
+                "SeleniumChromeProfile");
+
+            Directory.CreateDirectory(userDataDir);
+
+            options.AddArgument($"--user-data-dir={userDataDir}");
+            options.AddArgument("--profile-directory=Default");
             options.AddArgument("--window-size=1920,1080");
             options.AddArgument("--disable-gpu");
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-dev-shm-usage");
             options.AddArgument("--lang=ru-RU");
+            options.AddArgument("--disable-blink-features=AutomationControlled");
             options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
-            // options.AddArgument("--headless=new");
+
             options.PageLoadStrategy = PageLoadStrategy.Normal;
 
             string driverPath;
@@ -311,9 +379,10 @@ namespace ScientificActivityParsers.Parsers
             var driver = UndetectedChromeDriver.Create(
                 driverExecutablePath: driverPath,
                 options: options,
-                hideCommandPromptWindow: true,
+                hideCommandPromptWindow: false,
                 suppressWelcome: true
             );
+
             driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(60);
             driver.Manage().Timeouts().AsynchronousJavaScript = TimeSpan.FromSeconds(30);
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(2);
@@ -506,11 +575,14 @@ namespace ScientificActivityParsers.Parsers
         private static void EnsureNotBlocked(string html, string? url = null)
         {
             var normalized = NormalizeTextForSearch(html);
+            var normalizedUrl = url ?? string.Empty;
 
             var hardBlockMarkers = new[]
             {
+                "ip_restricted.asp",
                 "403 - forbidden",
                 "access is denied",
+                "доступ к данной странице",
                 "доступ к данной странице для незарегистрированных пользователей ограничен",
                 "доступ к сайту временно ограничен",
                 "недостаточно прав для открытия страницы",
@@ -518,15 +590,49 @@ namespace ScientificActivityParsers.Parsers
                 "для доступа к этой странице необходимо авторизоваться",
                 "введите код с картинки",
                 "подтвердите, что вы не робот",
-                "проверка пользователя"
+                "проверка пользователя",
+                "нарушение правил",
+                "нарушаете правила",
+                "нарушили правила",
+                "перейти на главную страницу",
+                "необходимо перейти на главную страницу",
+                "главную страницу и авторизоваться"
             };
 
             foreach (var marker in hardBlockMarkers)
             {
-                if (normalized.Contains(marker, StringComparison.OrdinalIgnoreCase))
+                if (normalized.Contains(marker, StringComparison.OrdinalIgnoreCase) ||
+                    normalizedUrl.Contains(marker, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new Exception($"eLibrary не вернул нужную страницу. Маркер блокировки: '{marker}'. Url: {url}");
+                    SaveBlockedHtml(html, url, marker);
+                    throw new Exception($"eLibrary ограничил доступ. Маркер: '{marker}'. Url: {url}");
                 }
+            }
+        }
+
+        private static void SaveBlockedHtml(string html, string? url, string marker)
+        {
+            try
+            {
+                var debugDir = Path.Combine(AppContext.BaseDirectory, "elibrary-debug");
+                Directory.CreateDirectory(debugDir);
+
+                var safeMarker = Regex.Replace(marker, @"[^\w\d]+", "_");
+                var fileName = $"blocked_{DateTime.Now:yyyyMMdd_HHmmss}_{safeMarker}.html";
+                var path = Path.Combine(debugDir, fileName);
+
+                var content =
+                    $"<!-- URL: {url} -->{Environment.NewLine}" +
+                    $"<!-- Marker: {marker} -->{Environment.NewLine}" +
+                    html;
+
+                File.WriteAllText(path, content);
+
+                Console.WriteLine($"HTML страницы блокировки сохранён: {path}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Не удалось сохранить HTML блокировки: {ex.Message}");
             }
         }
 
@@ -1282,6 +1388,47 @@ namespace ScientificActivityParsers.Parsers
             }
 
             return issn.Trim().ToUpperInvariant().Replace('Х', 'X').Replace('х', 'X');
+        }
+
+        private static bool IsProbablyAuthorized(string html)
+        {
+            var normalized = NormalizeTextForSearch(html);
+
+            if (normalized.Contains("вход в систему", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("логин", StringComparison.OrdinalIgnoreCase) && normalized.Contains("пароль", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("для доступа к этой странице необходимо авторизоваться", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (normalized.Contains("выход", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("персональная карточка", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("authorid", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return true;
+        }
+
+        public void OpenELibraryForManualLogin()
+        {
+            using var driver = CreateChromeDriver();
+
+            driver.Navigate().GoToUrl("https://www.elibrary.ru/");
+            WaitForDocumentReady(driver, TimeSpan.FromSeconds(30));
+
+            Console.WriteLine("Открыт браузер Selenium.");
+            Console.WriteLine("Вручную авторизуйся на https://www.elibrary.ru/");
+            Console.WriteLine("После авторизации открой страницу автора, например:");
+            Console.WriteLine("https://www.elibrary.ru/author_profile.asp?id=812005");
+            Console.WriteLine("Потом открой список публикаций:");
+            Console.WriteLine("https://www.elibrary.ru/author_items.asp?authorid=812005&hide_doubles=1");
+            Console.WriteLine("Когда убедишься, что страницы открываются нормально, вернись в консоль и нажми Enter.");
+
+            Console.ReadLine();
+
+            Console.WriteLine("Авторизация завершена. Chrome-профиль Selenium сохранён.");
         }
     }
 }

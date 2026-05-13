@@ -39,6 +39,11 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             _eLibraryAuthorProfileStorage = eLibraryAuthorProfileStorage;
         }
 
+
+        public void OpenELibraryForManualLogin()
+        {
+            _eLibraryParser.OpenELibraryForManualLogin();
+        }
         public ELibraryAuthorProfileViewModel? GetStoredAuthorProfile(int researcherId)
         {
             _logger.LogInformation("ELibrary.GetStoredAuthorProfile. ResearcherId:{ResearcherId}", researcherId);
@@ -139,28 +144,28 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 return 0;
             }
 
-            try
-            {
-                var categoryInfo = _eLibraryParser.GetAuthorPublicationCategoryInfo(researcher.ELibraryAuthorId);
+            //try
+            //{
+            //    var categoryInfo = _eLibraryParser.GetAuthorPublicationCategoryInfo(researcher.ELibraryAuthorId);
 
-                _logger.LogInformation(
-                    "ELibrary.ImportAuthorPublications. Parsed category groups count:{Count}",
-                    categoryInfo.PublicationIdsByCategory.Count);
+            //    _logger.LogInformation(
+            //        "ELibrary.ImportAuthorPublications. Parsed category groups count:{Count}",
+            //        categoryInfo.PublicationIdsByCategory.Count);
 
-                foreach (var category in categoryInfo.PublicationIdsByCategory)
-                {
-                    _logger.LogInformation(
-                        "ELibrary category {Category}. Publications count:{Count}",
-                        category.Key,
-                        category.Value.Count);
-                }
+            //    foreach (var category in categoryInfo.PublicationIdsByCategory)
+            //    {
+            //        _logger.LogInformation(
+            //            "ELibrary category {Category}. Publications count:{Count}",
+            //            category.Key,
+            //            category.Value.Count);
+            //    }
 
-                ApplyCategoriesToPublications(publications, categoryInfo);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Не удалось получить категории публикаций eLibrary. Импорт продолжится без категорий.");
-            }
+            //    ApplyCategoriesToPublications(publications, categoryInfo);
+            //}
+            //catch (Exception ex)
+            //{
+            //    _logger.LogWarning(ex, "Не удалось получить категории публикаций eLibrary. Импорт продолжится без категорий.");
+            //}
 
             var existingPublications = _publicationStorage.GetFilteredList(new PublicationSearchModel
             {

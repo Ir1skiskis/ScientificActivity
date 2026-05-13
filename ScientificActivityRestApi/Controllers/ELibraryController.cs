@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ScientificActivityBusinessLogics.BusinessLogics;
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.BusinessLogicsContracts;
 
@@ -98,6 +99,20 @@ namespace ScientificActivityRestApi.Controllers
             try
             {
                 return Ok(_logic.ImportAuthorPublications(model));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public IActionResult OpenManualLogin()
+        {
+            try
+            {
+                _logic.OpenELibraryForManualLogin();
+                return Ok("Окно eLibrary было открыто, авторизация сохранена в Selenium-профиле.");
             }
             catch (Exception ex)
             {
