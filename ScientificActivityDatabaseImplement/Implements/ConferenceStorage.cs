@@ -1,4 +1,5 @@
-﻿using ScientificActivityContracts.BindingModels;
+﻿using Microsoft.EntityFrameworkCore;
+using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.SearchModels;
 using ScientificActivityContracts.StoragesContracts;
 using ScientificActivityContracts.ViewModels;
@@ -13,9 +14,27 @@ namespace ScientificActivityDatabaseImplement.Implements
 {
     public class ConferenceStorage : IConferenceStorage
     {
+        private readonly DbContextOptions<ScientificActivityDatabase>? _options;
+
+        public ConferenceStorage()
+        {
+        }
+
+        public ConferenceStorage(DbContextOptions<ScientificActivityDatabase> options)
+        {
+            _options = options;
+        }
+
+        private ScientificActivityDatabase CreateContext()
+        {
+            return _options == null
+                ? new ScientificActivityDatabase()
+                : new ScientificActivityDatabase(_options);
+        }
+
         public List<ConferenceViewModel> GetFullList()
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             return context.Conferences
                 .AsEnumerable()
@@ -25,7 +44,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public List<ConferenceViewModel> GetFilteredList(ConferenceSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             IQueryable<Conference> query = context.Conferences;
 
@@ -33,34 +52,42 @@ namespace ScientificActivityDatabaseImplement.Implements
             {
                 query = query.Where(x => x.Id == model.Id.Value);
             }
+
             if (!string.IsNullOrWhiteSpace(model.Title))
             {
                 query = query.Where(x => x.Title.Contains(model.Title));
             }
+
             if (!string.IsNullOrWhiteSpace(model.City))
             {
                 query = query.Where(x => x.City != null && x.City.Contains(model.City));
             }
+
             if (!string.IsNullOrWhiteSpace(model.Country))
             {
                 query = query.Where(x => x.Country != null && x.Country.Contains(model.Country));
             }
+
             if (!string.IsNullOrWhiteSpace(model.SubjectArea))
             {
                 query = query.Where(x => x.SubjectArea != null && x.SubjectArea.Contains(model.SubjectArea));
             }
+
             if (model.Format.HasValue)
             {
                 query = query.Where(x => x.Format == model.Format.Value);
             }
+
             if (model.Level.HasValue)
             {
                 query = query.Where(x => x.Level == model.Level.Value);
             }
+
             if (model.DateFrom.HasValue)
             {
                 query = query.Where(x => x.StartDate >= model.DateFrom.Value);
             }
+
             if (model.DateTo.HasValue)
             {
                 query = query.Where(x => x.EndDate <= model.DateTo.Value);
@@ -74,7 +101,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ConferenceViewModel? GetElement(ConferenceSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             Conference? element = null;
 
@@ -92,7 +119,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ConferenceViewModel? Insert(ConferenceBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var newElement = Conference.Create(model);
             if (newElement == null)
@@ -108,7 +135,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ConferenceViewModel? Update(ConferenceBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var element = context.Conferences.FirstOrDefault(x => x.Id == model.Id);
             if (element == null)
@@ -124,7 +151,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ConferenceViewModel? Delete(ConferenceBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var element = context.Conferences.FirstOrDefault(x => x.Id == model.Id);
             if (element == null)

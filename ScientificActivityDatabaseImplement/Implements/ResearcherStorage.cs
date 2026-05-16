@@ -14,9 +14,27 @@ namespace ScientificActivityDatabaseImplement.Implements
 {
     public class ResearcherStorage : IResearcherStorage
     {
+        private readonly DbContextOptions<ScientificActivityDatabase>? _options;
+
+        public ResearcherStorage()
+        {
+        }
+
+        public ResearcherStorage(DbContextOptions<ScientificActivityDatabase> options)
+        {
+            _options = options;
+        }
+
+        private ScientificActivityDatabase CreateContext()
+        {
+            return _options == null
+                ? new ScientificActivityDatabase()
+                : new ScientificActivityDatabase(_options);
+        }
+
         public List<ResearcherViewModel> GetFullList()
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             return context.Researchers
                 .Include(x => x.Publications)
@@ -27,7 +45,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public List<ResearcherViewModel> GetFilteredList(ResearcherSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             IQueryable<Researcher> query = context.Researchers
                 .Include(x => x.Publications);
@@ -36,30 +54,37 @@ namespace ScientificActivityDatabaseImplement.Implements
             {
                 query = query.Where(x => x.Id == model.Id.Value);
             }
+
             if (!string.IsNullOrWhiteSpace(model.Email))
             {
                 query = query.Where(x => x.Email.Contains(model.Email));
             }
+
             if (!string.IsNullOrWhiteSpace(model.LastName))
             {
                 query = query.Where(x => x.LastName.Contains(model.LastName));
             }
+
             if (!string.IsNullOrWhiteSpace(model.FirstName))
             {
                 query = query.Where(x => x.FirstName.Contains(model.FirstName));
             }
+
             if (!string.IsNullOrWhiteSpace(model.Department))
             {
                 query = query.Where(x => x.Department.Contains(model.Department));
             }
+
             if (!string.IsNullOrWhiteSpace(model.Position))
             {
                 query = query.Where(x => x.Position.Contains(model.Position));
             }
+
             if (!string.IsNullOrWhiteSpace(model.ELibraryAuthorId))
             {
                 query = query.Where(x => x.ELibraryAuthorId != null && x.ELibraryAuthorId.Contains(model.ELibraryAuthorId));
             }
+
             if (model.IsActive.HasValue)
             {
                 query = query.Where(x => x.IsActive == model.IsActive.Value);
@@ -73,7 +98,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ResearcherViewModel? GetElement(ResearcherSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             Researcher? element = null;
 
@@ -111,7 +136,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ResearcherViewModel? Insert(ResearcherBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var newElement = Researcher.Create(model);
             if (newElement == null)
@@ -130,7 +155,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ResearcherViewModel? Update(ResearcherBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var element = context.Researchers
                 .Include(x => x.Publications)
@@ -149,7 +174,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public ResearcherViewModel? Delete(ResearcherBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var element = context.Researchers
                 .Include(x => x.Publications)

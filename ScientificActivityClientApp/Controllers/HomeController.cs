@@ -1085,7 +1085,7 @@ namespace ScientificActivityClientApp.Controllers
 
                 if (onlyUpcoming == true)
                 {
-                    var today = DateTime.Today;
+                    var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
                     query = query.Where(x => x.EndDate.Date >= today);
                 }
 
@@ -1403,7 +1403,7 @@ namespace ScientificActivityClientApp.Controllers
 
                 if (onlyActive == true)
                 {
-                    var today = DateTime.Today;
+                    var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
                     query = query.Where(x => x.StartDate.Date >= today);
                 }
 

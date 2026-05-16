@@ -54,15 +54,19 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 
         private List<RecommendationItemViewModel> GetGrantRecommendations(List<string> researcherTags)
         {
+            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
             return _context.Grants
                 .AsNoTracking()
                 .Include(x => x.GrantTags)
                     .ThenInclude(x => x.Tag)
+                .Where(x => x.Status == ScientificActivityDataModels.Enums.GrantStatus.Открыт &&
+                            x.EndDate >= today)
                 .ToList()
                 .Select(grant =>
                 {
                     var matchedTags = grant.GrantTags
-                        .Where(x => x.Tag != null && researcherTags.Contains(x.Tag.Name))
+                        .Where(x => x.Tag != null && researcherTags.Contains(x.Tag.Name, StringComparer.OrdinalIgnoreCase))
                         .Select(x => x.Tag.Name)
                         .Distinct()
                         .OrderBy(x => x)
@@ -89,25 +93,30 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 
         private List<RecommendationItemViewModel> GetConferenceRecommendations(List<string> researcherTags)
         {
+            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
             return _context.Conferences
                 .AsNoTracking()
                 .Include(x => x.ConferenceTags)
                     .ThenInclude(x => x.Tag)
+                .Where(x => x.EndDate >= today)
                 .ToList()
                 .Select(conference =>
                 {
                     var matchedTags = conference.ConferenceTags
-                        .Where(x => x.Tag != null && researcherTags.Contains(x.Tag.Name))
+                        .Where(x => x.Tag != null && researcherTags.Contains(x.Tag.Name, StringComparer.OrdinalIgnoreCase))
                         .Select(x => x.Tag.Name)
                         .Distinct()
                         .OrderBy(x => x)
                         .ToList();
 
                     var sourceParts = new List<string>();
+
                     if (!string.IsNullOrWhiteSpace(conference.City))
                     {
                         sourceParts.Add(conference.City);
                     }
+
                     if (!string.IsNullOrWhiteSpace(conference.Country))
                     {
                         sourceParts.Add(conference.Country);
@@ -142,7 +151,7 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 .Select(journal =>
                 {
                     var matchedTags = journal.JournalTags
-                        .Where(x => x.Tag != null && researcherTags.Contains(x.Tag.Name))
+                        .Where(x => x.Tag != null && researcherTags.Contains(x.Tag.Name, StringComparer.OrdinalIgnoreCase))
                         .Select(x => x.Tag.Name)
                         .Distinct()
                         .OrderBy(x => x)

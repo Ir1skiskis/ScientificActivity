@@ -1,4 +1,5 @@
-﻿using ScientificActivityContracts.BindingModels;
+﻿using Microsoft.EntityFrameworkCore;
+using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.SearchModels;
 using ScientificActivityContracts.StoragesContracts;
 using ScientificActivityContracts.ViewModels;
@@ -13,9 +14,27 @@ namespace ScientificActivityDatabaseImplement.Implements
 {
     public class JournalStorage : IJournalStorage
     {
+        private readonly DbContextOptions<ScientificActivityDatabase>? _options;
+
+        public JournalStorage()
+        {
+        }
+
+        public JournalStorage(DbContextOptions<ScientificActivityDatabase> options)
+        {
+            _options = options;
+        }
+
+        private ScientificActivityDatabase CreateContext()
+        {
+            return _options == null
+                ? new ScientificActivityDatabase()
+                : new ScientificActivityDatabase(_options);
+        }
+
         public List<JournalViewModel> GetFullList()
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             return context.Journals
                 .AsEnumerable()
@@ -25,7 +44,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public List<JournalViewModel> GetFilteredList(JournalSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             IQueryable<Journal> query = context.Journals;
 
@@ -33,22 +52,27 @@ namespace ScientificActivityDatabaseImplement.Implements
             {
                 query = query.Where(x => x.Id == model.Id.Value);
             }
+
             if (!string.IsNullOrWhiteSpace(model.Title))
             {
                 query = query.Where(x => x.Title.Contains(model.Title));
             }
+
             if (!string.IsNullOrWhiteSpace(model.Issn))
             {
                 query = query.Where(x => x.Issn != null && x.Issn.Contains(model.Issn));
             }
+
             if (!string.IsNullOrWhiteSpace(model.SubjectArea))
             {
                 query = query.Where(x => x.SubjectArea != null && x.SubjectArea.Contains(model.SubjectArea));
             }
+
             if (model.IsVak.HasValue)
             {
                 query = query.Where(x => x.IsVak == model.IsVak.Value);
             }
+
             if (model.IsWhiteList.HasValue)
             {
                 query = query.Where(x => x.IsWhiteList == model.IsWhiteList.Value);
@@ -62,7 +86,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public JournalViewModel? GetElement(JournalSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             Journal? element = null;
 
@@ -89,7 +113,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public JournalViewModel? Insert(JournalBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var newElement = Journal.Create(model);
             if (newElement == null)
@@ -105,7 +129,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public JournalViewModel? Update(JournalBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var element = context.Journals.FirstOrDefault(x => x.Id == model.Id);
             if (element == null)
@@ -121,7 +145,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public JournalViewModel? Delete(JournalBindingModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var element = context.Journals.FirstOrDefault(x => x.Id == model.Id);
             if (element == null)
@@ -139,7 +163,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public List<JournalViewModel> GetPagedList(JournalSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var query = context.Journals.AsQueryable();
 
@@ -176,7 +200,7 @@ namespace ScientificActivityDatabaseImplement.Implements
 
         public int GetCount(JournalSearchModel model)
         {
-            using var context = new ScientificActivityDatabase();
+            using var context = CreateContext();
 
             var query = context.Journals.AsQueryable();
 

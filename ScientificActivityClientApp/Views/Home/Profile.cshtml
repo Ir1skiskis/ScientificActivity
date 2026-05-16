@@ -148,7 +148,7 @@
                                 </div>
 
                                 <div class="form-text">
-                                    Можно выбрать несколько тегов. Для выбора больше не нужно зажимать Ctrl.
+                                    Можно выбрать несколько тегов.
                                 </div>
                             </div>
 
@@ -388,50 +388,103 @@
 
                 <hr class="my-4" />
 
-                <h5 class="mb-3">Профиль eLibrary</h5>
-
-                <form method="post" asp-action="OpenManualLogin">
-                    <button type="submit" class="btn btn-warning">
-                        Войти в eLibrary вручную
-                    </button>
-                </form>
-
-                <form method="post" asp-action="LoadELibraryProfile" class="mb-3">
-                    <div class="row">
-                        <div class="col-md-8 mb-2">
-                            <label class="form-label">AuthorId eLibrary</label>
-                            <input type="text" name="authorId" class="form-control" value="@Model.ELibraryAuthorId" />
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end mb-2">
-                            <button type="submit" class="btn btn-outline-primary w-100">Загрузить профиль</button>
+                <div class="card border-primary mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Профиль eLibrary</span>
+                            @if (!string.IsNullOrWhiteSpace(Model.ELibraryAuthorId))
+                            {
+                                <span class="badge bg-light text-primary">
+                                    AuthorId: @Model.ELibraryAuthorId
+                                </span>
+                            }
                         </div>
                     </div>
-                </form>
 
-                <form method="post" asp-action="BindELibraryAuthor" class="mb-3">
-                    <div class="row">
-                        <div class="col-md-8 mb-2">
-                            <label class="form-label">Привязать AuthorId</label>
-                            <input type="text" name="authorId" class="form-control" value="@Model.ELibraryAuthorId" />
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end mb-2">
-                            <button type="submit" class="btn btn-success w-100">Привязать</button>
-                        </div>
-                    </div>
-                </form>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">
+                            В этом разделе можно привязать профиль автора eLibrary, загрузить наукометрические показатели
+                            и импортировать список публикаций исследователя.
+                        </p>
 
-                <form method="post" asp-action="ImportELibraryProfile" class="mb-4">
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-warning">Импортировать профиль в систему</button>
+                        <div class="alert alert-light border d-flex align-items-start gap-3 mb-4">
+                            <div class="fs-4 text-warning">
+                                🔐
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold mb-1">
+                                    Ручная авторизация в eLibrary
+                                </div>
+                                <div class="text-muted small mb-3">
+                                    Используется только при первом входе или если eLibrary ограничивает доступ к страницам автора.
+                                    После авторизации данные сохраняются в Selenium-профиле браузера.
+                                </div>
+
+                                <form method="post" asp-action="OpenManualLogin">
+                                    <button type="submit" class="btn btn-outline-warning">
+                                        Войти в eLibrary вручную
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <form method="post" asp-action="LoadELibraryProfile" class="mb-3">
+                            <div class="row">
+                                <div class="col-md-8 mb-2">
+                                    <label class="form-label">AuthorId eLibrary</label>
+                                    <input type="text"
+                                           name="authorId"
+                                           class="form-control"
+                                           value="@Model.ELibraryAuthorId"
+                                           placeholder="Например: 1135134" />
+                                </div>
+
+                                <div class="col-md-4 d-flex align-items-end mb-2">
+                                    <button type="submit" class="btn btn-outline-primary w-100">
+                                        Загрузить профиль
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <form method="post" asp-action="BindELibraryAuthor" class="mb-3">
+                            <div class="row">
+                                <div class="col-md-8 mb-2">
+                                    <label class="form-label">Привязать AuthorId к исследователю</label>
+                                    <input type="text"
+                                           name="authorId"
+                                           class="form-control"
+                                           value="@Model.ELibraryAuthorId"
+                                           placeholder="Введите AuthorId автора" />
+                                </div>
+
+                                <div class="col-md-4 d-flex align-items-end mb-2">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        Привязать
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-6">
+                                <form method="post" asp-action="ImportELibraryProfile">
+                                    <button type="submit" class="btn btn-warning w-100">
+                                        Импортировать профиль
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="col-md-6">
+                                <form method="post" asp-action="ImportELibraryPublications">
+                                    <button type="submit" class="btn btn-info w-100 text-white">
+                                        Импортировать публикации
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                </form>
-                <form method="post" asp-action="ImportELibraryPublications" class="mb-4">
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-info">
-                            Импортировать публикации из eLibrary
-                        </button>
-                    </div>
-                </form>
+                </div>
 
                 <div class="card border-primary mb-4">
                     <div class="card-header bg-primary text-white">
