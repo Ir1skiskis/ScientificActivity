@@ -15,6 +15,10 @@ namespace ScientificActivityContracts.ViewModels
 
         public List<PublicationViewModel> Publications { get; set; } = new();
 
+        public List<PublicationViewModel> PeriodPublications { get; set; } = new();
+
+        public ResearcherReportPeriodStatisticViewModel PeriodStatistic { get; set; } = new();
+
         public Dictionary<int, int> PublicationsRincByYear { get; set; } = new();
         public Dictionary<int, int> PublicationsCoreRincByYear { get; set; } = new();
         public Dictionary<int, int> CitationsRincByYear { get; set; } = new();

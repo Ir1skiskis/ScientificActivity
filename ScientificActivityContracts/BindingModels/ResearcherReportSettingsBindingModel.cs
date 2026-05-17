@@ -10,6 +10,10 @@ namespace ScientificActivityContracts.BindingModels
     {
         public int ResearcherId { get; set; }
 
+        public int StartYear { get; set; }
+
+        public int EndYear { get; set; }
+
         public bool IncludeCommonInfo { get; set; } = true;
         public bool IncludePublicationSummary { get; set; } = true;
         public bool IncludeCitationIndexes { get; set; } = true;

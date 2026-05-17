@@ -26,6 +26,38 @@
         </div>
     </div>
 
+    <div class="card border-primary mb-4">
+        <div class="card-header bg-primary text-white">
+            Период отчета
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="StartYear" class="form-label">Год начала периода</label>
+                    <input asp-for="StartYear"
+                           type="number"
+                           class="form-control"
+                           min="1990"
+                           max="@DateTime.Now.Year" />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="EndYear" class="form-label">Год окончания периода</label>
+                    <input asp-for="EndYear"
+                           type="number"
+                           class="form-control"
+                           min="1990"
+                           max="@DateTime.Now.Year" />
+                </div>
+            </div>
+
+            <div class="form-text">
+                В отчет будут включены публикации и показатели научной активности за выбранный период.
+            </div>
+        </div>
+    </div>
+
     <div class="card mb-4">
         <div class="card-header">
             Состав отчета

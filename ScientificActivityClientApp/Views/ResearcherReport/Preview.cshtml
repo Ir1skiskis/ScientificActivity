@@ -164,6 +164,72 @@
 
     <h2 class="report-title">@Model.Settings.ReportTitle</h2>
 
+    <div class="report-section">
+        <h4>Научная активность за период @Model.PeriodStatistic.StartYear–@Model.PeriodStatistic.EndYear</h4>
+
+        <table class="report-table">
+            <tbody>
+                <tr>
+                    <th>Количество публикаций за период</th>
+                    <td>@Model.PeriodStatistic.PublicationsCount</td>
+                </tr>
+                <tr>
+                    <th>Публикации, входящие в РИНЦ</th>
+                    <td>@Model.PeriodStatistic.RincPublicationsCount</td>
+                </tr>
+                <tr>
+                    <th>Публикации, входящие в ядро РИНЦ</th>
+                    <td>@Model.PeriodStatistic.CoreRincPublicationsCount</td>
+                </tr>
+                <tr>
+                    <th>Публикации в журналах ВАК</th>
+                    <td>@Model.PeriodStatistic.VakPublicationsCount</td>
+                </tr>
+                <tr>
+                    <th>Публикации в журналах Белого списка</th>
+                    <td>@Model.PeriodStatistic.WhiteListPublicationsCount</td>
+                </tr>
+                <tr>
+                    <th>Суммарное текущее число цитирований публикаций периода в РИНЦ</th>
+                    <td>@Model.PeriodStatistic.CitationsRincCount</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="report-section">
+        <h4>Динамика публикационной активности по годам</h4>
+
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Год</th>
+                    <th>Публикации</th>
+                    <th>РИНЦ</th>
+                    <th>Ядро РИНЦ</th>
+                    <th>ВАК</th>
+                    <th>Белый список</th>
+                    <th>Цитирования РИНЦ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.PeriodStatistic.YearStatistics)
+                {
+                    <tr>
+                        <td>@item.Year</td>
+                        <td>@item.PublicationsCount</td>
+                        <td>@item.RincPublicationsCount</td>
+                        <td>@item.CoreRincPublicationsCount</td>
+                        <td>@item.VakPublicationsCount</td>
+                        <td>@item.WhiteListPublicationsCount</td>
+                        <td>@item.CitationsRincCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+
     @if (profile == null)
     {
         <div class="alert alert-warning">
@@ -502,20 +568,20 @@
         @if (Model.Settings.IncludePublications)
         {
             <div class="report-section">
-                <h4>9. Список публикаций</h4>
+                <h4>9. Список публикаций за выбранный период</h4>
 
-                @if (Model.Publications == null || !Model.Publications.Any())
+                @if (Model.PeriodPublications == null || !Model.PeriodPublications.Any())
                 {
-                    <p>Публикации по выбранным параметрам не найдены.</p>
+                    <p>Публикации за выбранный период не найдены.</p>
                 }
                 else
                 {
                     <p>
-                        Всего публикаций в отчете:
-                        <strong>@Model.Publications.Count</strong>
+                        Всего публикаций за выбранный период:
+                        <strong>@Model.PeriodPublications.Count</strong>
                     </p>
 
-                    @foreach (var publication in Model.Publications)
+                    @foreach (var publication in Model.PeriodPublications)
                     {
                         <div class="publication-item">
                             <strong>@publication.Year. @publication.Title</strong>
@@ -570,9 +636,21 @@
                                 {
                                     <span>ВАК; </span>
                                 }
-                                @if (publication.IsRsci)
+                                @if (publication.IsWhiteListLevel1)
                                 {
-                                    <span>RSCI; </span>
+                                    <span>Белый список 1; </span>
+                                }
+                                @if (publication.IsWhiteListLevel2)
+                                {
+                                    <span>Белый список 2; </span>
+                                }
+                                @if (publication.IsWhiteListLevel3)
+                                {
+                                    <span>Белый список 3; </span>
+                                }
+                                @if (publication.IsWhiteListLevel4)
+                                {
+                                    <span>Белый список 4; </span>
                                 }
                             </div>
                         </div>
