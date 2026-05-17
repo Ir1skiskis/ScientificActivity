@@ -761,6 +761,288 @@ namespace ScientificActivityParsers.Parsers
             return (city, country);
         }
 
+        private async Task<string> GetFilterHomeNonceAsync(
+    HttpClient client,
+    string pageUrl,
+    bool isPastEvents,
+    CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Получение nonce со страницы: {Url}", pageUrl);
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, pageUrl);
+
+            request.Headers.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+            request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            request.Headers.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+
+            var response = await client.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var html = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(html))
+            {
+                throw new Exception($"Не удалось получить HTML страницы для nonce: {pageUrl}");
+            }
+
+            var candidates = ExtractNonceCandidates(html);
+
+            if (candidates.Count == 0)
+            {
+                var debugPath = Path.Combine(
+                    Path.GetTempPath(),
+                    $"na-konferencii_nonce_debug_{DateTime.Now:yyyyMMddHHmmss}.html");
+
+                await File.WriteAllTextAsync(debugPath, html, cancellationToken);
+
+                throw new Exception($"Не удалось найти nonce на странице {pageUrl}. HTML сохранен: {debugPath}");
+            }
+
+            _logger.LogInformation(
+                "Найдены nonce-кандидаты: {Nonces}",
+                string.Join(", ", candidates));
+
+            foreach (var candidate in candidates)
+            {
+                var isValid = await IsFilterHomeNonceValidAsync(
+                    client,
+                    candidate,
+                    pageUrl,
+                    isPastEvents,
+                    cancellationToken);
+
+                if (isValid)
+                {
+                    _logger.LogInformation("Подходящий nonce для filterhome найден: {Nonce}", candidate);
+                    return candidate;
+                }
+
+                _logger.LogInformation("Nonce не подошел для filterhome: {Nonce}", candidate);
+            }
+
+            var debugAllPath = Path.Combine(
+                Path.GetTempPath(),
+                $"na-konferencii_nonce_all_failed_{DateTime.Now:yyyyMMddHHmmss}.html");
+
+            await File.WriteAllTextAsync(debugAllPath, html, cancellationToken);
+
+            throw new Exception(
+                $"На странице найдены nonce, но ни один не подошел для filterhome. HTML сохранен: {debugAllPath}. " +
+                $"Кандидаты: {string.Join(", ", candidates)}");
+        }
+
+        private static List<string> ExtractNonceCandidates(string html)
+        {
+            var result = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(html))
+            {
+                return result;
+            }
+
+            var patterns = new[]
+            {
+        @"[""']nonce[""']\s*[:=]\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"nonce\s*[:=]\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"[""']ajax_nonce[""']\s*[:=]\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"ajax_nonce\s*[:=]\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"[""']security[""']\s*[:=]\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"security\s*[:=]\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"data-nonce\s*=\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"name\s*=\s*[""']nonce[""'][^>]*value\s*=\s*[""'](?<nonce>[a-f0-9]{10})[""']",
+        @"value\s*=\s*[""'](?<nonce>[a-f0-9]{10})[""'][^>]*name\s*=\s*[""']nonce[""']"
+    };
+
+            foreach (var pattern in patterns)
+            {
+                var matches = Regex.Matches(
+                    html,
+                    pattern,
+                    RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+                foreach (Match match in matches)
+                {
+                    var nonce = match.Groups["nonce"].Value.Trim();
+
+                    if (!string.IsNullOrWhiteSpace(nonce) &&
+                        !result.Contains(nonce, StringComparer.OrdinalIgnoreCase))
+                    {
+                        result.Add(nonce);
+                    }
+                }
+            }
+
+            var filterHomeWindowMatches = Regex.Matches(
+                html,
+                @"filterhome[\s\S]{0,2000}?(?<nonce>[a-f0-9]{10})",
+                RegexOptions.IgnoreCase);
+
+            foreach (Match match in filterHomeWindowMatches)
+            {
+                var nonce = match.Groups["nonce"].Value.Trim();
+
+                if (!string.IsNullOrWhiteSpace(nonce) &&
+                    !result.Contains(nonce, StringComparer.OrdinalIgnoreCase))
+                {
+                    result.Insert(0, nonce);
+                }
+            }
+
+            return result
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private async Task<bool> IsFilterHomeNonceValidAsync(
+    HttpClient client,
+    string nonce,
+    string pageUrl,
+    bool isPastEvents,
+    CancellationToken cancellationToken)
+        {
+            var today = DateTime.UtcNow.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+
+            var parameters = new List<KeyValuePair<string, string>>
+    {
+        new("action", "filterhome"),
+        new("nonce", nonce),
+        new("period_start", isPastEvents ? "" : today),
+        new("period_end", isPastEvents ? today : ""),
+        new("zayavka_start", ""),
+        new("zayavka_end", ""),
+        new("location", ""),
+        new("search_type", ""),
+        new("page", "1"),
+        new("past_events", isPastEvents ? "1" : "0"),
+        new("actual_events", "0"),
+        new("autor_id", "0"),
+        new("search_keyword", ""),
+        new("application", "")
+    };
+
+            try
+            {
+                using var request = new HttpRequestMessage(
+                    HttpMethod.Post,
+                    "https://na-konferencii.ru/wp-admin/admin-ajax.php");
+
+                request.Headers.Referrer = new Uri(pageUrl);
+                request.Headers.TryAddWithoutValidation("Origin", "https://na-konferencii.ru");
+                request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+                request.Headers.TryAddWithoutValidation("Accept", "*/*");
+                request.Headers.TryAddWithoutValidation(
+                    "User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+                request.Content = new FormUrlEncodedContent(parameters);
+
+                var response = await client.SendAsync(request, cancellationToken);
+                var html = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation(
+                        "Проверка nonce {Nonce}: статус {StatusCode}",
+                        nonce,
+                        (int)response.StatusCode);
+
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(html))
+                {
+                    return false;
+                }
+
+                var hasConferenceItems =
+                    html.Contains("notice-item", StringComparison.OrdinalIgnoreCase) ||
+                    html.Contains("notice-item-title", StringComparison.OrdinalIgnoreCase);
+
+                var looksBlocked =
+                    html.Contains("forbidden", StringComparison.OrdinalIgnoreCase) ||
+                    html.Contains("access denied", StringComparison.OrdinalIgnoreCase) ||
+                    html.Contains("403", StringComparison.OrdinalIgnoreCase);
+
+                _logger.LogInformation(
+                    "Проверка nonce {Nonce}: html length {Length}, has items {HasItems}, blocked {Blocked}",
+                    nonce,
+                    html.Length,
+                    hasConferenceItems,
+                    looksBlocked);
+
+                return hasConferenceItems && !looksBlocked;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex, "Ошибка проверки nonce {Nonce}", nonce);
+                return false;
+            }
+        }
+
+        private static string? ExtractFilterHomeNonce(string html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+            {
+                return null;
+            }
+
+            var patterns = new[]
+            {
+        @"[""']nonce[""']\s*:\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"nonce\s*:\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"[""']ajax_nonce[""']\s*:\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"ajax_nonce\s*:\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"[""']security[""']\s*:\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"security\s*:\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"data-nonce\s*=\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"name\s*=\s*[""']nonce[""'][^>]*value\s*=\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+        @"value\s*=\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""'][^>]*name\s*=\s*[""']nonce[""']"
+    };
+
+            foreach (var pattern in patterns)
+            {
+                var match = Regex.Match(html, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+                if (match.Success)
+                {
+                    return match.Groups["nonce"].Value.Trim();
+                }
+            }
+
+            var filterHomeMatch = Regex.Match(
+                html,
+                @"filterhome[\s\S]{0,1000}?[""']nonce[""']\s*[:=]\s*[""'](?<nonce>[a-zA-Z0-9]{6,32})[""']",
+                RegexOptions.IgnoreCase);
+
+            if (filterHomeMatch.Success)
+            {
+                return filterHomeMatch.Groups["nonce"].Value.Trim();
+            }
+
+            return null;
+        }
+
+        private static void ConfigureNaKonferenciiAjaxClient(HttpClient client, string referrerUrl)
+        {
+            client.DefaultRequestHeaders.Clear();
+
+            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
+            client.DefaultRequestHeaders.Referrer = new Uri(referrerUrl);
+
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+            client.DefaultRequestHeaders.Add(
+                "Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+
+            client.DefaultRequestHeaders.Add("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+            client.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
+        }
+
         public async Task<List<ConferenceImportModel>> ParsePastEventsAsync(CancellationToken cancellationToken = default)
         {
             var result = new List<ConferenceImportModel>();
@@ -768,11 +1050,16 @@ namespace ScientificActivityParsers.Parsers
             var conferenceLocations = new Dictionary<string, (string? city, string? country)>(StringComparer.OrdinalIgnoreCase);
 
             using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
-            client.DefaultRequestHeaders.Referrer = new Uri("https://na-konferencii.ru/proshedshie-meroprijatija");
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
-            // мб менять придется(f12-network)
-            var nonce = "ba58571c6d";
+
+            var pageUrl = "https://na-konferencii.ru/proshedshie-meroprijatija";
+
+            ConfigureNaKonferenciiAjaxClient(client, pageUrl);
+
+            var nonce = await GetFilterHomeNonceAsync(
+            client,
+            pageUrl,
+            isPastEvents: false,
+            cancellationToken);
             var baseParams = new List<KeyValuePair<string, string>>
             {
                 new("action", "filterhome"),
@@ -795,30 +1082,49 @@ namespace ScientificActivityParsers.Parsers
                 _logger.LogInformation("Обработка страницы {Page} из {Total}", page, totalPages);
 
                 var parameters = new List<KeyValuePair<string, string>>(baseParams)
-                {
-                    new("page", page.ToString())
-                };
-                var content = new FormUrlEncodedContent(parameters);
+{
+    new("page", page.ToString())
+};
 
-                string html = null;
+                string? html = null;
                 const int maxRetries = 3;
+
                 for (int retry = 1; retry <= maxRetries; retry++)
                 {
                     try
                     {
-                        var response = await client.PostAsync("https://na-konferencii.ru/wp-admin/admin-ajax.php", content, cancellationToken);
+                        using var content = new FormUrlEncodedContent(parameters);
+
+                        var response = await client.PostAsync(
+                            "https://na-konferencii.ru/wp-admin/admin-ajax.php",
+                            content,
+                            cancellationToken);
+
                         response.EnsureSuccessStatusCode();
+
                         html = await response.Content.ReadAsStringAsync(cancellationToken);
                         break;
                     }
                     catch (Exception ex) when (retry < maxRetries)
                     {
-                        _logger.LogWarning(ex, "Ошибка запроса для страницы {Page}, попытка {Retry} из {MaxRetries}, повтор через {Delay}с", page, retry, maxRetries, Math.Pow(2, retry));
+                        _logger.LogWarning(
+                            ex,
+                            "Ошибка запроса для страницы {Page}, попытка {Retry} из {MaxRetries}, повтор через {Delay}с",
+                            page,
+                            retry,
+                            maxRetries,
+                            Math.Pow(2, retry));
+
                         await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retry)), cancellationToken);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Ошибка запроса для страницы {Page} после {MaxRetries} попыток, пропускаем", page, maxRetries);
+                        _logger.LogError(
+                            ex,
+                            "Ошибка запроса для страницы {Page} после {MaxRetries} попыток, пропускаем",
+                            page,
+                            maxRetries);
+
                         break;
                     }
                 }
@@ -916,11 +1222,16 @@ namespace ScientificActivityParsers.Parsers
             var conferenceLocations = new Dictionary<string, (string? city, string? country)>(StringComparer.OrdinalIgnoreCase);
 
             using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
-            client.DefaultRequestHeaders.Referrer = new Uri("https://na-konferencii.ru/anonsy-nauchnyh-meroprijatij");
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
 
-            var nonce = "ba58571c6d";
+            var pageUrl = "https://na-konferencii.ru/anonsy-nauchnyh-meroprijatij";
+
+            ConfigureNaKonferenciiAjaxClient(client, pageUrl);
+
+            var nonce = await GetFilterHomeNonceAsync(
+            client,
+            pageUrl,
+            isPastEvents: true,
+            cancellationToken);
             var baseParams = new List<KeyValuePair<string, string>>
             {
                 new("action", "filterhome"),
@@ -945,30 +1256,49 @@ namespace ScientificActivityParsers.Parsers
                 _logger.LogInformation("Обработка страницы анонсов {Page} из {Total}", page, totalPages);
 
                 var parameters = new List<KeyValuePair<string, string>>(baseParams)
-                {
-                    new("page", page.ToString())
-                };
-                var content = new FormUrlEncodedContent(parameters);
+{
+    new("page", page.ToString())
+};
 
-                string html = null;
+                string? html = null;
                 const int maxRetries = 3;
+
                 for (int retry = 1; retry <= maxRetries; retry++)
                 {
                     try
                     {
-                        var response = await client.PostAsync("https://na-konferencii.ru/wp-admin/admin-ajax.php", content, cancellationToken);
+                        using var content = new FormUrlEncodedContent(parameters);
+
+                        var response = await client.PostAsync(
+                            "https://na-konferencii.ru/wp-admin/admin-ajax.php",
+                            content,
+                            cancellationToken);
+
                         response.EnsureSuccessStatusCode();
+
                         html = await response.Content.ReadAsStringAsync(cancellationToken);
                         break;
                     }
                     catch (Exception ex) when (retry < maxRetries)
                     {
-                        _logger.LogWarning(ex, "Ошибка запроса для страницы анонсов {Page}, попытка {Retry} из {MaxRetries}", page, retry, maxRetries);
-                        await Task.Delay(2000 * retry, cancellationToken);
+                        _logger.LogWarning(
+                            ex,
+                            "Ошибка запроса для страницы {Page}, попытка {Retry} из {MaxRetries}, повтор через {Delay}с",
+                            page,
+                            retry,
+                            maxRetries,
+                            Math.Pow(2, retry));
+
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retry)), cancellationToken);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Ошибка запроса для страницы анонсов {Page} после {MaxRetries} попыток", page, maxRetries);
+                        _logger.LogError(
+                            ex,
+                            "Ошибка запроса для страницы {Page} после {MaxRetries} попыток, пропускаем",
+                            page,
+                            maxRetries);
+
                         break;
                     }
                 }
