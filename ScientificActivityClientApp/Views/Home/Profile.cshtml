@@ -1,6 +1,7 @@
 ﻿@model ResearcherViewModel
 @using ScientificActivityDataModels.Enums
 @using ScientificActivityContracts.ViewModels
+@using Microsoft.AspNetCore.Http
 
 @{
     ViewData["Title"] = "Профиль";
@@ -36,6 +37,22 @@
                 {
                     <div class="alert alert-success">
                         @TempData["Message"]
+                    </div>
+                }
+
+                @if (Context.Session.GetString("CurrentImportJobId") != null)
+                {
+                    <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                        <div>
+                            <div class="fw-semibold">Сейчас выполняется импорт данных</div>
+                            <div class="small">
+                                Вы можете продолжать работу с системой: смотреть журналы, конференции, гранты или настраивать рекомендации.
+                            </div>
+                        </div>
+
+                        <a asp-action="CurrentImportProgress" class="btn btn-outline-primary btn-sm">
+                            Открыть прогресс импорта
+                        </a>
                     </div>
                 }
 

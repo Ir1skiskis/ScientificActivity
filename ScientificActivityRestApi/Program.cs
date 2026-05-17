@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using QuestPDF.Infrastructure;
 using ScientificActivityBusinessLogics.BusinessLogics;
+using ScientificActivityBusinessLogics.Services;
 using ScientificActivityContracts.BusinessLogicsContracts;
 using ScientificActivityContracts.StoragesContracts;
 using ScientificActivityDatabaseImplement;
@@ -10,7 +12,6 @@ using ScientificActivityParsers.Interfaces;
 using ScientificActivityParsers.Parsers;
 using ScientificActivityParsers.Services;
 using System.Text;
-using QuestPDF.Infrastructure;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -87,6 +88,7 @@ builder.Services.AddHttpClient<IRcsiSubjectCategoryParser, RcsiSubjectCategoryPa
 builder.Services.AddTransient<IELibraryAuthorProfileStorage, ELibraryAuthorProfileStorage>();
 builder.Services.AddTransient<IResearcherReportLogic, ResearcherReportLogic>();
 builder.Services.AddTransient<ITagGenerationLogic, TagGenerationLogic>();
+builder.Services.AddSingleton<ImportProgressService>();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -105,12 +107,6 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-
-//using (var scope = app.Services.CreateScope())
-//{
-//    var tagPopulationLogic = scope.ServiceProvider.GetRequiredService<ITagPopulationLogic>();
-//    tagPopulationLogic.PopulateTags();
-//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

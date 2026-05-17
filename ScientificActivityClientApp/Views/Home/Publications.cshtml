@@ -78,48 +78,78 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">Категории eLibrary / РИНЦ</label>
+                                    <label class="form-label">Категории публикаций</label>
 
-                                    <div class="border rounded p-2" style="max-height: 460px; overflow-y: auto;">
+                                    <div class="border rounded p-2" style="max-height: 320px; overflow-y: auto;">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="rinc" id="cat_rinc" checked="@selectedCategories.Contains("rinc")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="rinc"
+                                                   id="cat_rinc"
+                                                   checked="@selectedCategories.Contains("rinc")" />
                                             <label class="form-check-label" for="cat_rinc">
-                                                публикации, включенные в РИНЦ (@CountBy(x => x.IsInRinc))
+                                                РИНЦ (@CountBy(x => x.IsInRinc))
                                             </label>
                                         </div>
 
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="coreRinc" id="cat_coreRinc" checked="@selectedCategories.Contains("coreRinc")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="coreRinc"
+                                                   id="cat_coreRinc"
+                                                   checked="@selectedCategories.Contains("coreRinc")" />
                                             <label class="form-check-label" for="cat_coreRinc">
-                                                публикации, включенные в ядро РИНЦ (@CountBy(x => x.IsInCoreRinc))
+                                                Ядро РИНЦ (@CountBy(x => x.IsInCoreRinc))
                                             </label>
                                         </div>
 
                                         <hr />
 
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList1" id="cat_whiteList1" checked="@selectedCategories.Contains("whiteList1")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="whiteList1"
+                                                   id="cat_whiteList1"
+                                                   checked="@selectedCategories.Contains("whiteList1")" />
                                             <label class="form-check-label" for="cat_whiteList1">
                                                 Белый список, уровень 1 (@CountBy(x => x.IsWhiteListLevel1))
                                             </label>
                                         </div>
 
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList2" id="cat_whiteList2" checked="@selectedCategories.Contains("whiteList2")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="whiteList2"
+                                                   id="cat_whiteList2"
+                                                   checked="@selectedCategories.Contains("whiteList2")" />
                                             <label class="form-check-label" for="cat_whiteList2">
                                                 Белый список, уровень 2 (@CountBy(x => x.IsWhiteListLevel2))
                                             </label>
                                         </div>
 
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList3" id="cat_whiteList3" checked="@selectedCategories.Contains("whiteList3")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="whiteList3"
+                                                   id="cat_whiteList3"
+                                                   checked="@selectedCategories.Contains("whiteList3")" />
                                             <label class="form-check-label" for="cat_whiteList3">
                                                 Белый список, уровень 3 (@CountBy(x => x.IsWhiteListLevel3))
                                             </label>
                                         </div>
 
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="whiteList4" id="cat_whiteList4" checked="@selectedCategories.Contains("whiteList4")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="whiteList4"
+                                                   id="cat_whiteList4"
+                                                   checked="@selectedCategories.Contains("whiteList4")" />
                                             <label class="form-check-label" for="cat_whiteList4">
                                                 Белый список, уровень 4 (@CountBy(x => x.IsWhiteListLevel4))
                                             </label>
@@ -128,106 +158,14 @@
                                         <hr />
 
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="rsci" id="cat_rsci" checked="@selectedCategories.Contains("rsci")" />
-                                            <label class="form-check-label" for="cat_rsci">
-                                                RSCI (@CountBy(x => x.IsRsci))
-                                            </label>
-                                        </div>
-
-                                        <hr />
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ1" id="cat_scopusQ1" checked="@selectedCategories.Contains("scopusQ1")" />
-                                            <label class="form-check-label" for="cat_scopusQ1">
-                                                Scopus Q1 (@CountBy(x => x.IsScopusQ1))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ2" id="cat_scopusQ2" checked="@selectedCategories.Contains("scopusQ2")" />
-                                            <label class="form-check-label" for="cat_scopusQ2">
-                                                Scopus Q2 (@CountBy(x => x.IsScopusQ2))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ3" id="cat_scopusQ3" checked="@selectedCategories.Contains("scopusQ3")" />
-                                            <label class="form-check-label" for="cat_scopusQ3">
-                                                Scopus Q3 (@CountBy(x => x.IsScopusQ3))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="scopusQ4" id="cat_scopusQ4" checked="@selectedCategories.Contains("scopusQ4")" />
-                                            <label class="form-check-label" for="cat_scopusQ4">
-                                                Scopus Q4 (@CountBy(x => x.IsScopusQ4))
-                                            </label>
-                                        </div>
-
-                                        <hr />
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ1" id="cat_wosQ1" checked="@selectedCategories.Contains("wosQ1")" />
-                                            <label class="form-check-label" for="cat_wosQ1">
-                                                Web of Science Q1 (@CountBy(x => x.IsWebOfScienceQ1))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ2" id="cat_wosQ2" checked="@selectedCategories.Contains("wosQ2")" />
-                                            <label class="form-check-label" for="cat_wosQ2">
-                                                Web of Science Q2 (@CountBy(x => x.IsWebOfScienceQ2))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ3" id="cat_wosQ3" checked="@selectedCategories.Contains("wosQ3")" />
-                                            <label class="form-check-label" for="cat_wosQ3">
-                                                Web of Science Q3 (@CountBy(x => x.IsWebOfScienceQ3))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="wosQ4" id="cat_wosQ4" checked="@selectedCategories.Contains("wosQ4")" />
-                                            <label class="form-check-label" for="cat_wosQ4">
-                                                Web of Science Q4 (@CountBy(x => x.IsWebOfScienceQ4))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="wosNoQuartile" id="cat_wosNoQuartile" checked="@selectedCategories.Contains("wosNoQuartile")" />
-                                            <label class="form-check-label" for="cat_wosNoQuartile">
-                                                Web of Science без квартиля (@CountBy(x => x.IsWebOfScienceNoQuartile))
-                                            </label>
-                                        </div>
-
-                                        <hr />
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="vak" id="cat_vak" checked="@selectedCategories.Contains("vak")" />
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="categories"
+                                                   value="vak"
+                                                   id="cat_vak"
+                                                   checked="@selectedCategories.Contains("vak")" />
                                             <label class="form-check-label" for="cat_vak">
                                                 ВАК (@CountBy(x => x.IsVak))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="vak1" id="cat_vak1" checked="@selectedCategories.Contains("vak1")" />
-                                            <label class="form-check-label" for="cat_vak1">
-                                                ВАК, категория 1 (@CountBy(x => x.IsVakCategory1))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="vak2" id="cat_vak2" checked="@selectedCategories.Contains("vak2")" />
-                                            <label class="form-check-label" for="cat_vak2">
-                                                ВАК, категория 2 (@CountBy(x => x.IsVakCategory2))
-                                            </label>
-                                        </div>
-
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="categories" value="vak3" id="cat_vak3" checked="@selectedCategories.Contains("vak3")" />
-                                            <label class="form-check-label" for="cat_vak3">
-                                                ВАК, категория 3 (@CountBy(x => x.IsVakCategory3))
                                             </label>
                                         </div>
                                     </div>
@@ -337,29 +275,9 @@
                                                     <span class="badge bg-success me-1 mb-1">Ядро РИНЦ</span>
                                                 }
 
-                                                @if (publication.IsRsci)
-                                                {
-                                                    <span class="badge bg-info text-dark me-1 mb-1">RSCI</span>
-                                                }
-
                                                 @if (publication.IsVak)
                                                 {
                                                     <span class="badge bg-warning text-dark me-1 mb-1">ВАК</span>
-                                                }
-
-                                                @if (publication.IsVakCategory1)
-                                                {
-                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК-1</span>
-                                                }
-
-                                                @if (publication.IsVakCategory2)
-                                                {
-                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК-2</span>
-                                                }
-
-                                                @if (publication.IsVakCategory3)
-                                                {
-                                                    <span class="badge bg-warning text-dark me-1 mb-1">ВАК-3</span>
                                                 }
 
                                                 @if (publication.IsWhiteListLevel1)
@@ -382,71 +300,13 @@
                                                     <span class="badge bg-dark me-1 mb-1">БС-4</span>
                                                 }
 
-                                                @if (publication.IsScopusQ1)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q1</span>
-                                                }
-
-                                                @if (publication.IsScopusQ2)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q2</span>
-                                                }
-
-                                                @if (publication.IsScopusQ3)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q3</span>
-                                                }
-
-                                                @if (publication.IsScopusQ4)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">Scopus Q4</span>
-                                                }
-
-                                                @if (publication.IsWebOfScienceQ1)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q1</span>
-                                                }
-
-                                                @if (publication.IsWebOfScienceQ2)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q2</span>
-                                                }
-
-                                                @if (publication.IsWebOfScienceQ3)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q3</span>
-                                                }
-
-                                                @if (publication.IsWebOfScienceQ4)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">WoS Q4</span>
-                                                }
-
-                                                @if (publication.IsWebOfScienceNoQuartile)
-                                                {
-                                                    <span class="badge bg-secondary me-1 mb-1">WoS без квартиля</span>
-                                                }
-
                                                 @if (!publication.IsInRinc &&
                                                                                         !publication.IsInCoreRinc &&
-                                                                                        !publication.IsRsci &&
                                                                                         !publication.IsVak &&
-                                                                                        !publication.IsVakCategory1 &&
-                                                                                        !publication.IsVakCategory2 &&
-                                                                                        !publication.IsVakCategory3 &&
                                                                                         !publication.IsWhiteListLevel1 &&
                                                                                         !publication.IsWhiteListLevel2 &&
                                                                                         !publication.IsWhiteListLevel3 &&
-                                                                                        !publication.IsWhiteListLevel4 &&
-                                                                                        !publication.IsScopusQ1 &&
-                                                                                        !publication.IsScopusQ2 &&
-                                                                                        !publication.IsScopusQ3 &&
-                                                                                        !publication.IsScopusQ4 &&
-                                                                                        !publication.IsWebOfScienceQ1 &&
-                                                                                        !publication.IsWebOfScienceQ2 &&
-                                                                                        !publication.IsWebOfScienceQ3 &&
-                                                                                        !publication.IsWebOfScienceQ4 &&
-                                                                                        !publication.IsWebOfScienceNoQuartile)
+                                                                                        !publication.IsWhiteListLevel4)
                                                 {
                                                     <span class="text-muted">—</span>
                                                 }

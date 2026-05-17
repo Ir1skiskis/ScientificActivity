@@ -1,0 +1,175 @@
+﻿@{
+    ViewData["Title"] = "Выполнение импорта";
+    var jobId = ViewBag.JobId as string ?? "";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-4">
+            <div class="card-header text-center">
+                <h4>Выполнение импорта</h4>
+            </div>
+
+            <div class="card-body">
+                <input type="hidden" id="jobId" value="@jobId" />
+
+                <div id="progressAlert" class="alert alert-info">
+                    Импорт запущен. Данные обновляются автоматически.
+                </div>
+
+                <h5 id="progressTitle" class="mb-3">Подготовка задачи</h5>
+
+                <div class="progress mb-3" style="height: 28px;">
+                    <div id="progressBar"
+                         class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar"
+                         style="width: 0%;">
+                        0%
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <strong>Статус:</strong>
+                    <span id="progressStatus">Ожидание данных...</span>
+                </div>
+
+                <div class="mb-2">
+                    <strong>Обработано:</strong>
+                    <span id="progressCount">—</span>
+                </div>
+
+                <div class="mb-4">
+                    <strong>Примерно осталось:</strong>
+                    <span id="progressEta">—</span>
+                </div>
+
+                <div class="alert alert-light border">
+                    Пока идет импорт, вы можете продолжить работу с системой:
+                    открыть журналы, конференции, гранты или настроить рекомендации.
+                    Импорт продолжит выполняться в фоне.
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex">
+                    <a asp-controller="Home"
+                       asp-action="Profile"
+                       class="btn btn-outline-primary">
+                        Вернуться в профиль
+                    </a>
+
+                    <a asp-controller="Home"
+                       asp-action="Journals"
+                       class="btn btn-outline-secondary">
+                        Журналы
+                    </a>
+
+                    <a asp-controller="Home"
+                       asp-action="Conferences"
+                       class="btn btn-outline-secondary">
+                        Конференции
+                    </a>
+
+                    <a asp-controller="Home"
+                       asp-action="Grants"
+                       class="btn btn-outline-secondary">
+                        Гранты
+                    </a>
+
+                    <a asp-controller="Home"
+                       asp-action="ResearcherInterests"
+                       class="btn btn-outline-success">
+                        Рекомендации
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const jobId = document.getElementById('jobId').value;
+    const progressBar = document.getElementById('progressBar');
+    const progressTitle = document.getElementById('progressTitle');
+    const progressStatus = document.getElementById('progressStatus');
+    const progressCount = document.getElementById('progressCount');
+    const progressEta = document.getElementById('progressEta');
+    const progressAlert = document.getElementById('progressAlert');
+
+    function formatEta(seconds) {
+        if (seconds === null || seconds === undefined) {
+            return 'расчет выполняется';
+        }
+
+        if (seconds <= 0) {
+            return 'меньше минуты';
+        }
+
+        const minutes = Math.floor(seconds / 60);
+        const restSeconds = seconds % 60;
+
+        if (minutes <= 0) {
+            return `${restSeconds} сек.`;
+        }
+
+        return `${minutes} мин. ${restSeconds} сек.`;
+    }
+
+    function updateProgress() {
+        fetch(`/Home/GetImportProgress?jobId=${jobId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Не удалось получить статус импорта');
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                const percent = Math.max(0, Math.min(100, data.percent ?? 0));
+
+                progressTitle.textContent = data.title ?? 'Импорт';
+                progressStatus.textContent = data.statusText ?? 'Выполнение задачи';
+
+                progressBar.style.width = `${percent}%`;
+                progressBar.textContent = `${percent}%`;
+                progressBar.setAttribute('aria-valuenow', percent);
+
+                if (data.total && data.total > 0) {
+                    progressCount.textContent = `${data.current ?? 0} из ${data.total}`;
+                } else {
+                    progressCount.textContent = data.current !== null && data.current !== undefined
+                        ? data.current
+                        : '—';
+                }
+
+                progressEta.textContent = formatEta(data.estimatedSecondsLeft);
+
+                if (data.isCompleted && !data.isFailed) {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.remove('progress-bar-striped');
+                    progressBar.classList.add('bg-success');
+
+                    progressAlert.className = 'alert alert-success';
+                    progressAlert.textContent = 'Импорт успешно завершен. Можно вернуться к работе с данными.';
+
+                    clearInterval(timer);
+                }
+
+                if (data.isCompleted && data.isFailed) {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.remove('progress-bar-striped');
+                    progressBar.classList.add('bg-danger');
+
+                    progressAlert.className = 'alert alert-danger';
+                    progressAlert.textContent = data.errorMessage ?? 'Импорт завершился с ошибкой.';
+
+                    clearInterval(timer);
+                }
+            })
+            .catch(error => {
+                progressAlert.className = 'alert alert-warning';
+                progressAlert.textContent = error.message;
+            });
+    }
+
+    updateProgress();
+    const timer = setInterval(updateProgress, 1500);
+</script>

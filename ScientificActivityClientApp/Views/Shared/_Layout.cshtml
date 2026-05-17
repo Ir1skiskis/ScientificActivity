@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Http
+
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
@@ -42,6 +44,17 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Home" asp-action="Publications">Публикации</a>
                         </li>
+
+                        @if (Context.Session.GetString("CurrentImportJobId") != null)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-warning fw-semibold"
+                                   asp-controller="Home"
+                                   asp-action="CurrentImportProgress">
+                                    Текущий импорт
+                                </a>
+                            </li>
+                        }
                     </ul>
 
                     <partial name="_LoginPartial" />

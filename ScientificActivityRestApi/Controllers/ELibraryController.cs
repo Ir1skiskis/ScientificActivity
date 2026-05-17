@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ScientificActivityBusinessLogics.BusinessLogics;
+using ScientificActivityBusinessLogics.Services;
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.BusinessLogicsContracts;
+using ScientificActivityContracts.ViewModels;
 
 namespace ScientificActivityRestApi.Controllers
 {
@@ -10,10 +12,46 @@ namespace ScientificActivityRestApi.Controllers
     public class ELibraryController : ControllerBase
     {
         private readonly IELibraryLogic _logic;
+        private readonly ImportProgressService _progressService;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public ELibraryController(IELibraryLogic logic)
+        public ELibraryController(IELibraryLogic logic, ImportProgressService progressService,
+            IServiceScopeFactory scopeFactory)
         {
             _logic = logic;
+            _progressService = progressService;
+            _scopeFactory = scopeFactory;
+        }
+
+        [HttpPost]
+        public ActionResult<ImportProgressViewModel> StartImportAuthorPublications(ELibraryImportBindingModel model)
+        {
+            var job = _progressService.CreateJob("Импорт публикаций из eLibrary");
+
+            Task.Run(() =>
+            {
+                using var scope = _scopeFactory.CreateScope();
+
+                var scopedLogic = scope.ServiceProvider.GetRequiredService<IELibraryLogic>();
+                var scopedProgress = scope.ServiceProvider.GetRequiredService<ImportProgressService>();
+
+                try
+                {
+                    scopedProgress.Update(job.JobId, "Подготовка импорта публикаций", percent: 5);
+
+                    var processedCount = scopedLogic.ImportAuthorPublications(model, job.JobId);
+
+                    scopedProgress.Complete(
+                        job.JobId,
+                        $"Импорт публикаций завершен. Обработано записей: {processedCount}");
+                }
+                catch (Exception ex)
+                {
+                    scopedProgress.Fail(job.JobId, ex);
+                }
+            });
+
+            return Ok(job);
         }
 
         [HttpPost]

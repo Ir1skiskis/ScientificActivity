@@ -13,6 +13,7 @@ namespace ScientificActivityClientApp.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private const string CurrentImportJobIdSessionKey = "CurrentImportJobId";
 
         public HomeController(ILogger<HomeController> logger)
         {
@@ -1904,54 +1905,79 @@ namespace ScientificActivityClientApp.Controllers
         {
             if (APIClient.Researcher == null)
             {
-                return RedirectToLoginRequired();
+                return RedirectToAction("Enter", new { error = "Требуется авторизация" });
             }
 
             var publications = APIClient.GetRequest<List<PublicationViewModel>>(
                 $"api/Publication/GetFilteredPublications?researcherId={APIClient.Researcher.Id}")
                 ?? new List<PublicationViewModel>();
 
+            IEnumerable<PublicationViewModel> query = publications;
+
+            var selectedCategories = categories?.ToHashSet(StringComparer.OrdinalIgnoreCase)
+                                     ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var selectedYears = years?.ToHashSet()
+                                ?? new HashSet<int>();
+
             if (!string.IsNullOrWhiteSpace(search))
             {
-                publications = publications
-                    .Where(x =>
-                        (!string.IsNullOrWhiteSpace(x.Title) && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrWhiteSpace(x.Authors) && x.Authors.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrWhiteSpace(x.Keywords) && x.Keywords.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrWhiteSpace(x.JournalTitle) && x.JournalTitle.Contains(search, StringComparison.OrdinalIgnoreCase)))
-                    .ToList();
+                var normalizedSearch = search.Trim();
+
+                query = query.Where(x =>
+                    (!string.IsNullOrWhiteSpace(x.Title) &&
+                     x.Title.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(x.Authors) &&
+                     x.Authors.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(x.JournalTitle) &&
+                     x.JournalTitle.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(x.ConferenceTitle) &&
+                     x.ConferenceTitle.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(x.Keywords) &&
+                     x.Keywords.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)));
             }
 
-            if (years != null && years.Length > 0)
+            if (selectedYears.Any())
             {
-                publications = publications
-                    .Where(x => years.Contains(x.Year))
-                    .ToList();
+                query = query.Where(x => selectedYears.Contains(x.Year));
             }
 
-            if (categories != null && categories.Length > 0)
+            if (selectedCategories.Any())
             {
-                publications = publications
-                    .Where(x => PublicationMatchesAnyCategory(x, categories))
-                    .ToList();
+                query = query.Where(x => selectedCategories.Any(category => category switch
+                {
+                    "rinc" => x.IsInRinc,
+                    "coreRinc" => x.IsInCoreRinc,
+
+                    "whiteList1" => x.IsWhiteListLevel1,
+                    "whiteList2" => x.IsWhiteListLevel2,
+                    "whiteList3" => x.IsWhiteListLevel3,
+                    "whiteList4" => x.IsWhiteListLevel4,
+
+                    "vak" => x.IsVak,
+
+                    _ => false
+                }));
             }
 
-            publications = sort switch
+            query = sort switch
             {
-                "year_asc" => publications.OrderBy(x => x.Year).ThenBy(x => x.Title).ToList(),
-                "citations_desc" => publications.OrderByDescending(x => x.CitationsRincCount ?? 0).ThenByDescending(x => x.Year).ToList(),
-                "citations_asc" => publications.OrderBy(x => x.CitationsRincCount ?? 0).ThenByDescending(x => x.Year).ToList(),
-                "title_asc" => publications.OrderBy(x => x.Title).ToList(),
-                "title_desc" => publications.OrderByDescending(x => x.Title).ToList(),
-                _ => publications.OrderByDescending(x => x.Year).ThenBy(x => x.Title).ToList()
+                "year_asc" => query.OrderBy(x => x.Year).ThenBy(x => x.Title),
+                "citations_desc" => query.OrderByDescending(x => x.CitationsRincCount ?? 0).ThenByDescending(x => x.Year),
+                "citations_asc" => query.OrderBy(x => x.CitationsRincCount ?? 0).ThenByDescending(x => x.Year),
+                "title_asc" => query.OrderBy(x => x.Title),
+                "title_desc" => query.OrderByDescending(x => x.Title),
+                _ => query.OrderByDescending(x => x.Year).ThenBy(x => x.Title)
             };
 
-            ViewBag.SelectedCategories = categories?.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>();
-            ViewBag.SelectedYears = years?.ToHashSet() ?? new HashSet<int>();
+            var result = query.ToList();
+
+            ViewBag.SelectedCategories = selectedCategories;
+            ViewBag.SelectedYears = selectedYears;
             ViewBag.Sort = sort;
             ViewBag.Search = search;
 
-            return View(publications);
+            return View(result);
         }
 
         private static bool PublicationMatchesAnyCategory(PublicationViewModel publication, string[] categories)
@@ -2219,25 +2245,86 @@ namespace ScientificActivityClientApp.Controllers
                     return View("Profile", APIClient.Researcher);
                 }
 
-                APIClient.PostRequest("api/ELibrary/ImportAuthorPublications", new ELibraryImportBindingModel
+                var importModel = new ELibraryImportBindingModel
                 {
                     ResearcherId = APIClient.Researcher.Id,
                     ELibraryAuthorId = APIClient.Researcher.ELibraryAuthorId
-                });
+                };
 
-                UpdateResearcherProfile();
-                FillProfileViewBags();
+                var job = APIClient.PostRequestWithResponse<ELibraryImportBindingModel, ImportProgressViewModel>(
+                    "api/ELibrary/StartImportAuthorPublications",
+                    importModel);
 
-                ViewBag.Message = "Импорт публикаций eLibrary завершён";
+                if (job == null || string.IsNullOrWhiteSpace(job.JobId))
+                {
+                    ViewBag.Error = "Не удалось запустить импорт публикаций";
+                    FillProfileViewBags();
+                    return View("Profile", APIClient.Researcher);
+                }
 
-                return View("Profile", APIClient.Researcher);
+                HttpContext.Session.SetString(CurrentImportJobIdSessionKey, job.JobId);
+
+                return RedirectToAction("ImportProgress", new { jobId = job.JobId });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка импорта публикаций eLibrary");
+                _logger.LogError(ex, "Ошибка запуска импорта публикаций eLibrary");
                 ViewBag.Error = ex.Message;
                 FillProfileViewBags();
                 return View("Profile", APIClient.Researcher);
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CurrentImportProgress()
+        {
+            var jobId = HttpContext.Session.GetString(CurrentImportJobIdSessionKey);
+
+            if (string.IsNullOrWhiteSpace(jobId))
+            {
+                TempData["Message"] = "Сейчас нет активного импорта.";
+                return RedirectToAction("Profile");
+            }
+
+            return RedirectToAction("ImportProgress", new { jobId });
+        }
+
+        [HttpGet]
+        public IActionResult ImportProgress(string jobId)
+        {
+            if (string.IsNullOrWhiteSpace(jobId))
+            {
+                return RedirectToAction("Profile");
+            }
+
+            ViewBag.JobId = jobId;
+
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult GetImportProgress(string jobId)
+        {
+            try
+            {
+                var progress = APIClient.GetRequest<ImportProgressViewModel>(
+                    $"api/ImportProgress/GetProgress?jobId={jobId}");
+
+                if (progress != null && progress.IsCompleted)
+                {
+                    var currentJobId = HttpContext.Session.GetString(CurrentImportJobIdSessionKey);
+
+                    if (string.Equals(currentJobId, jobId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        HttpContext.Session.Remove(CurrentImportJobIdSessionKey);
+                    }
+                }
+
+                return Json(progress);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
         }
 

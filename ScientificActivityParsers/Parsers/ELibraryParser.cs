@@ -201,7 +201,9 @@ namespace ScientificActivityParsers.Parsers
             return profile;
         }
 
-        public List<ELibraryPublicationImportModel> GetAuthorPublications(string authorId)
+        public List<ELibraryPublicationImportModel> GetAuthorPublications(
+    string authorId,
+    Action<ParserProgressModel>? progress = null)
         {
             if (string.IsNullOrWhiteSpace(authorId))
             {
@@ -214,12 +216,16 @@ namespace ScientificActivityParsers.Parsers
             var debugDir = Path.Combine(AppContext.BaseDirectory, "elibrary-debug");
             Directory.CreateDirectory(debugDir);
 
+            progress?.Invoke(new ParserProgressModel
+            {
+                StatusText = "Открытие профиля автора eLibrary",
+                Percent = 8
+            });
+
             var profileUrl = $"https://www.elibrary.ru/author_profile.asp?id={authorId}";
             var profileHtml = LoadPageHtml(driver, profileUrl, true);
 
             File.WriteAllText(Path.Combine(debugDir, $"profile_before_publications_{authorId}.html"), profileHtml);
-
-            // WaitForManualContinue("Профиль автора открыт. Проверь в браузере, что eLibrary видит авторизацию.");
 
             if (string.IsNullOrWhiteSpace(profileHtml))
             {
@@ -232,6 +238,12 @@ namespace ScientificActivityParsers.Parsers
                 Console.WriteLine("eLibrary, вероятно, не принял авторизацию. Проверь cookie или авторизацию в Chrome-профиле.");
                 return new List<ELibraryPublicationImportModel>();
             }
+
+            progress?.Invoke(new ParserProgressModel
+            {
+                StatusText = "Загрузка списка публикаций автора",
+                Percent = 15
+            });
 
             var publicationsUrl = $"https://www.elibrary.ru/author_items.asp?authorid={authorId}&hide_doubles=1";
             var html = LoadPageHtml(driver, publicationsUrl, true);
@@ -261,6 +273,14 @@ namespace ScientificActivityParsers.Parsers
 
             Console.WriteLine($"ELibrary GetAuthorPublications parsed count: {publications.Count}");
 
+            progress?.Invoke(new ParserProgressModel
+            {
+                StatusText = $"Найдено публикаций: {publications.Count}",
+                Current = 0,
+                Total = publications.Count,
+                Percent = 22
+            });
+
             foreach (var publication in publications)
             {
                 if (string.IsNullOrWhiteSpace(publication.Url) &&
@@ -270,7 +290,126 @@ namespace ScientificActivityParsers.Parsers
                 }
             }
 
+            EnrichPublicationsFromDetailsSlowly(driver, publications, debugDir, progress);
+
+            progress?.Invoke(new ParserProgressModel
+            {
+                StatusText = "Данные публикаций загружены из eLibrary",
+                Current = publications.Count,
+                Total = publications.Count,
+                Percent = 80
+            });
+
             return publications;
+        }
+
+        private static void EnrichPublicationsFromDetailsSlowly(
+    IWebDriver driver,
+    List<ELibraryPublicationImportModel> publications,
+    string debugDir,
+    Action<ParserProgressModel>? progress = null)
+        {
+            var loadedCount = 0;
+            var skippedCount = 0;
+            var errorCount = 0;
+            var total = publications.Count;
+
+            for (int i = 0; i < publications.Count; i++)
+            {
+                var publication = publications[i];
+                var current = i + 1;
+
+                if (string.IsNullOrWhiteSpace(publication.ELibraryId))
+                {
+                    skippedCount++;
+                    continue;
+                }
+
+                var percent = 22 + (int)Math.Round(current * 58.0 / Math.Max(total, 1));
+
+                progress?.Invoke(new ParserProgressModel
+                {
+                    StatusText = $"Загрузка страницы публикации {current} из {total}",
+                    Current = current,
+                    Total = total,
+                    Percent = percent
+                });
+
+                var detailUrl = $"https://www.elibrary.ru/item.asp?id={publication.ELibraryId}";
+
+                try
+                {
+                    Console.WriteLine($"ELibrary item loading. Id:{publication.ELibraryId}. Url:{detailUrl}");
+
+                    var delayBefore = Random.Shared.Next(3500, 7000);
+                    Thread.Sleep(delayBefore);
+
+                    var detailHtml = LoadPageHtml(driver, detailUrl, true);
+
+                    if (string.IsNullOrWhiteSpace(detailHtml))
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    var detailPath = Path.Combine(debugDir, $"item_{publication.ELibraryId}.html");
+                    File.WriteAllText(detailPath, detailHtml);
+
+                    var detailDoc = new HtmlDocument();
+                    detailDoc.LoadHtml(detailHtml);
+
+                    EnrichPublicationFromDetails(detailDoc, publication);
+
+                    if (string.IsNullOrWhiteSpace(publication.Url))
+                    {
+                        publication.Url = detailUrl;
+                    }
+
+                    loadedCount++;
+
+                    progress?.Invoke(new ParserProgressModel
+                    {
+                        StatusText = $"Обработана публикация {current} из {total}",
+                        Current = current,
+                        Total = total,
+                        Percent = percent
+                    });
+
+                    Console.WriteLine(
+                        $"ELibrary item enriched. Id:{publication.ELibraryId}. " +
+                        $"Keywords:{publication.Keywords}. " +
+                        $"OECD:{publication.RubricOecd}. " +
+                        $"ASJC:{publication.RubricAsjc}. " +
+                        $"GRNTI:{publication.RubricGrnti}. " +
+                        $"VAK:{publication.VakSpecialty}. " +
+                        $"RINC:{publication.IsInRinc}. " +
+                        $"CoreRINC:{publication.IsInCoreRinc}.");
+                }
+                catch (Exception ex)
+                {
+                    errorCount++;
+
+                    Console.WriteLine($"Ошибка загрузки деталки публикации {publication.ELibraryId}: {ex.Message}");
+
+                    try
+                    {
+                        var debugPath = Path.Combine(debugDir, $"item_error_{publication.ELibraryId}.html");
+                        File.WriteAllText(debugPath, driver.PageSource ?? string.Empty);
+
+                        Console.WriteLine($"HTML проблемной деталки сохранён: {debugPath}");
+                    }
+                    catch (Exception saveEx)
+                    {
+                        Console.WriteLine($"Не удалось сохранить HTML деталки {publication.ELibraryId}: {saveEx.Message}");
+                    }
+
+                    var delayAfterError = Random.Shared.Next(8000, 13000);
+                    Thread.Sleep(delayAfterError);
+                }
+            }
+
+            Console.WriteLine(
+                $"ELibrary item enrichment finished. Loaded:{loadedCount}, Skipped:{skippedCount}, Errors:{errorCount}");
         }
 
         private static void WaitForManualContinue(string message)
@@ -1209,12 +1348,24 @@ namespace ScientificActivityParsers.Parsers
         {
             var wholeText = CleanText(doc.DocumentNode.InnerText);
 
+            var eLibraryId = ExtractByRegex(wholeText, @"eLIBRARY ID:\s*(\d+)");
+            if (!string.IsNullOrWhiteSpace(eLibraryId))
+            {
+                publication.ELibraryId = eLibraryId;
+            }
+
             publication.Doi = ExtractByRegex(wholeText, @"DOI:\s*([^\s]+)");
 
             var titleNode = doc.DocumentNode.SelectSingleNode("//p[contains(@class,'bigtext')]");
             if (titleNode != null)
             {
                 publication.Title = CleanText(titleNode.InnerText);
+            }
+
+            var authors = ExtractAuthorsFromDetails(doc);
+            if (!string.IsNullOrWhiteSpace(authors))
+            {
+                publication.Authors = authors;
             }
 
             var yearMatch = Regex.Match(wholeText, @"Год:\s*(\d{4})", RegexOptions.IgnoreCase);
@@ -1240,24 +1391,15 @@ namespace ScientificActivityParsers.Parsers
                 }
             }
 
-            var keywordsTable = FindSectionTable(doc, "КЛЮЧЕВЫЕ СЛОВА:");
-            if (keywordsTable != null)
+            var keywords = ExtractKeywordsBySectionTitle(doc, "КЛЮЧЕВЫЕ СЛОВА:");
+            if (keywords.Count > 0)
             {
-                var keywords = keywordsTable
-                    .SelectNodes(".//a[contains(@href,'keyword_items.asp')]")
-                    ?.Select(x => CleanText(x.InnerText))
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                if (keywords != null && keywords.Count > 0)
-                {
-                    publication.Keywords = string.Join(", ", keywords);
-                }
+                publication.Keywords = string.Join(", ", keywords);
             }
 
             var abstractFull = doc.DocumentNode.SelectSingleNode("//div[@id='abstract2']");
             var abstractShort = doc.DocumentNode.SelectSingleNode("//div[@id='abstract1']");
+
             publication.Annotation = CleanText(abstractFull?.InnerText);
             if (string.IsNullOrWhiteSpace(publication.Annotation))
             {
@@ -1280,6 +1422,92 @@ namespace ScientificActivityParsers.Parsers
 
             publication.IsVak = !string.IsNullOrWhiteSpace(publication.VakSpecialty)
                                 && !publication.VakSpecialty.Equals("нет", StringComparison.OrdinalIgnoreCase);
+
+            if (publication.IsInCoreRinc)
+            {
+                publication.IsInRinc = true;
+            }
+        }
+
+        private static List<string> ExtractKeywordsBySectionTitle(HtmlDocument doc, string sectionTitle)
+        {
+            var sectionTable = FindSectionTable(doc, sectionTitle);
+
+            if (sectionTable == null)
+            {
+                return new List<string>();
+            }
+
+            return sectionTable
+                .SelectNodes(".//a[contains(@href,'keyword_items.asp')]")
+                ?.Select(x => CleanText(x.InnerText))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList()
+                ?? new List<string>();
+        }
+
+        private static string? ExtractAuthorsFromDetails(HtmlDocument doc)
+        {
+            var titleNode = doc.DocumentNode.SelectSingleNode("//p[contains(@class,'bigtext')]");
+            if (titleNode == null)
+            {
+                return null;
+            }
+
+            var titleTable = titleNode.Ancestors("table").FirstOrDefault();
+            if (titleTable == null)
+            {
+                return null;
+            }
+
+            var current = titleTable.NextSibling;
+
+            while (current != null)
+            {
+                if (current.NodeType != HtmlNodeType.Element)
+                {
+                    current = current.NextSibling;
+                    continue;
+                }
+
+                if (current.Name.Equals("div", StringComparison.OrdinalIgnoreCase) &&
+                    CleanText(current.InnerText).Length == 0)
+                {
+                    current = current.NextSibling;
+                    continue;
+                }
+
+                if (current.Name.Equals("table", StringComparison.OrdinalIgnoreCase))
+                {
+                    var text = CleanText(current.InnerText);
+
+                    if (text.Contains("Ульяновский", StringComparison.OrdinalIgnoreCase) ||
+                        text.Contains("университет", StringComparison.OrdinalIgnoreCase) ||
+                        text.Contains("ООО", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var authorNodes = current.SelectNodes(".//b/font[@color='#00008f'] | .//b/font[@color='#00008F']");
+                        if (authorNodes != null && authorNodes.Count > 0)
+                        {
+                            var authors = authorNodes
+                                .Select(x => CleanText(x.InnerText).Replace('\u00A0', ' '))
+                                .Where(x => !string.IsNullOrWhiteSpace(x))
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .ToList();
+
+                            if (authors.Count > 0)
+                            {
+                                return string.Join(", ", authors);
+                            }
+                        }
+                    }
+                }
+
+                current = current.NextSibling;
+            }
+
+            return null;
         }
 
         private static HtmlNode? FindSectionTable(HtmlDocument doc, string sectionTitle)

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ScientificActivityBusinessLogics.Services;
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.BusinessLogicsContracts;
 using ScientificActivityContracts.SearchModels;
@@ -10,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ScientificActivityBusinessLogics.BusinessLogics
@@ -22,6 +24,7 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
         private readonly IPublicationStorage _publicationStorage;
         private readonly IELibraryAuthorProfileStorage _eLibraryAuthorProfileStorage;
         private readonly IJournalStorage _journalStorage;
+        private readonly ImportProgressService _progressService;
 
         public ELibraryLogic(
             ILogger<ELibraryLogic> logger,
@@ -29,7 +32,8 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             IResearcherStorage researcherStorage,
             IPublicationStorage publicationStorage,
             IELibraryAuthorProfileStorage eLibraryAuthorProfileStorage,
-            IJournalStorage journalStorage)
+            IJournalStorage journalStorage, 
+            ImportProgressService progressService)
         {
             _logger = logger;
             _eLibraryParser = eLibraryParser;
@@ -37,6 +41,7 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             _publicationStorage = publicationStorage;
             _journalStorage = journalStorage;
             _eLibraryAuthorProfileStorage = eLibraryAuthorProfileStorage;
+            _progressService = progressService;
         }
 
 
@@ -117,9 +122,11 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             return _researcherStorage.Update(updateModel) != null;
         }
 
-        public int ImportAuthorPublications(ELibraryImportBindingModel model)
+        private int ImportAuthorPublicationsInternal(ELibraryImportBindingModel model, string? progressJobId)
         {
             _logger.LogInformation("ELibrary.ImportAuthorPublications. ResearcherId:{ResearcherId}", model.ResearcherId);
+
+            UpdateImportProgress(progressJobId, "Проверка данных исследователя", percent: 5);
 
             var researcher = GetResearcherForImport(model);
 
@@ -133,7 +140,22 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 throw new Exception("У исследователя не указан ELibraryAuthorId");
             }
 
-            var publications = _eLibraryParser.GetAuthorPublications(researcher.ELibraryAuthorId);
+            UpdateImportProgress(
+                progressJobId,
+                "Загрузка списка публикаций из eLibrary. Это может занять несколько минут",
+                percent: 15);
+
+            var publications = _eLibraryParser.GetAuthorPublications(
+            researcher.ELibraryAuthorId,
+            parserProgress =>
+            {
+                UpdateImportProgress(
+                    progressJobId,
+                    parserProgress.StatusText,
+                    parserProgress.Current,
+                    parserProgress.Total,
+                    parserProgress.Percent);
+            });
 
             _logger.LogInformation(
                 "ELibrary.ImportAuthorPublications. Parsed publications count:{Count}",
@@ -141,31 +163,22 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 
             if (publications.Count == 0)
             {
+                UpdateImportProgress(
+                    progressJobId,
+                    "Публикации не найдены или eLibrary ограничил доступ",
+                    current: 0,
+                    total: 0,
+                    percent: 100);
+
                 return 0;
             }
 
-            //try
-            //{
-            //    var categoryInfo = _eLibraryParser.GetAuthorPublicationCategoryInfo(researcher.ELibraryAuthorId);
-
-            //    _logger.LogInformation(
-            //        "ELibrary.ImportAuthorPublications. Parsed category groups count:{Count}",
-            //        categoryInfo.PublicationIdsByCategory.Count);
-
-            //    foreach (var category in categoryInfo.PublicationIdsByCategory)
-            //    {
-            //        _logger.LogInformation(
-            //            "ELibrary category {Category}. Publications count:{Count}",
-            //            category.Key,
-            //            category.Value.Count);
-            //    }
-
-            //    ApplyCategoriesToPublications(publications, categoryInfo);
-            //}
-            //catch (Exception ex)
-            //{
-            //    _logger.LogWarning(ex, "Не удалось получить категории публикаций eLibrary. Импорт продолжится без категорий.");
-            //}
+            UpdateImportProgress(
+                progressJobId,
+                $"Публикации загружены из eLibrary. Найдено: {publications.Count}",
+                current: 0,
+                total: publications.Count,
+                percent: 40);
 
             var existingPublications = _publicationStorage.GetFilteredList(new PublicationSearchModel
             {
@@ -187,8 +200,20 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             var updatedCount = 0;
             var skippedCount = 0;
 
+            var totalCount = publications.Count;
+            var loopIndex = 0;
+
             foreach (var publication in publications)
             {
+                loopIndex++;
+
+                UpdateImportProgress(
+                    progressJobId,
+                    $"Обработка публикации {loopIndex} из {totalCount}",
+                    current: loopIndex,
+                    total: totalCount,
+                    percent: 80 + (int)Math.Round(loopIndex * 18.0 / totalCount));
+
                 if (string.IsNullOrWhiteSpace(publication.Title))
                 {
                     skippedCount++;
@@ -315,6 +340,13 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 }
             }
 
+            UpdateImportProgress(
+                progressJobId,
+                "Завершение импорта публикаций",
+                current: totalCount,
+                total: totalCount,
+                percent: 98);
+
             _logger.LogInformation(
                 "ELibrary.ImportAuthorPublications finished. Parsed:{Parsed}, Inserted:{Inserted}, Updated:{Updated}, Skipped:{Skipped}, Processed:{Processed}",
                 publications.Count,
@@ -323,36 +355,28 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 skippedCount,
                 processedCount);
 
+            UpdateImportProgress(
+                progressJobId,
+                $"Импорт публикаций завершен. Добавлено: {insertedCount}, обновлено: {updatedCount}, пропущено: {skippedCount}",
+                current: totalCount,
+                total: totalCount,
+                percent: 100);
+
             return processedCount;
         }
 
-        private int? TryGetOrCreateJournal(ScientificActivityParsers.Models.ELibraryPublicationImportModel publication)
+        private int? TryGetOrCreateJournal(ELibraryPublicationImportModel publication)
         {
             if (string.IsNullOrWhiteSpace(publication.JournalTitle))
             {
                 return null;
             }
 
-            JournalViewModel? existingJournal = null;
-
-            if (!string.IsNullOrWhiteSpace(publication.JournalIssn))
-            {
-                existingJournal = _journalStorage.GetElement(new JournalSearchModel
-                {
-                    Issn = publication.JournalIssn
-                });
-            }
-
-            if (existingJournal == null)
-            {
-                existingJournal = _journalStorage.GetElement(new JournalSearchModel
-                {
-                    Title = publication.JournalTitle
-                });
-            }
+            var existingJournal = FindExistingJournalForPublication(publication);
 
             if (existingJournal != null)
             {
+                ApplyJournalInfoToPublication(publication, existingJournal);
                 return existingJournal.Id;
             }
 
@@ -379,7 +403,124 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 RcsiRecordSourceId = null
             });
 
+            if (created != null)
+            {
+                ApplyJournalInfoToPublication(publication, created);
+            }
+
             return created?.Id;
+        }
+
+        private JournalViewModel? FindExistingJournalForPublication(ELibraryPublicationImportModel publication)
+        {
+            var publicationIssn = NormalizeJournalIssn(publication.JournalIssn);
+            var publicationTitle = NormalizeJournalTitle(publication.JournalTitle);
+
+            var allJournals = _journalStorage.GetFilteredList(new JournalSearchModel());
+
+            if (!string.IsNullOrWhiteSpace(publicationIssn))
+            {
+                var journalByIssn = allJournals.FirstOrDefault(x =>
+                    NormalizeJournalIssn(x.Issn) == publicationIssn ||
+                    NormalizeJournalIssn(x.EIssn) == publicationIssn);
+
+                if (journalByIssn != null)
+                {
+                    return journalByIssn;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(publicationTitle))
+            {
+                var journalByTitle = allJournals.FirstOrDefault(x =>
+                    NormalizeJournalTitle(x.Title) == publicationTitle);
+
+                if (journalByTitle != null)
+                {
+                    return journalByTitle;
+                }
+            }
+
+            return null;
+        }
+
+        private static void ApplyJournalInfoToPublication(
+    ELibraryPublicationImportModel publication,
+    JournalViewModel journal)
+        {
+            publication.IsVak = publication.IsVak || journal.IsVak;
+
+            var whiteListLevel = journal.WhiteListLevel2025 ?? journal.WhiteListLevel2023;
+
+            if (journal.IsWhiteList || whiteListLevel.HasValue)
+            {
+                switch (whiteListLevel)
+                {
+                    case 1:
+                        publication.IsWhiteListLevel1 = true;
+                        break;
+                    case 2:
+                        publication.IsWhiteListLevel2 = true;
+                        break;
+                    case 3:
+                        publication.IsWhiteListLevel3 = true;
+                        break;
+                    case 4:
+                        publication.IsWhiteListLevel4 = true;
+                        break;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(publication.JournalIssn))
+            {
+                publication.JournalIssn = !string.IsNullOrWhiteSpace(journal.Issn)
+                    ? journal.Issn
+                    : journal.EIssn;
+            }
+
+            if (string.IsNullOrWhiteSpace(publication.JournalTitle))
+            {
+                publication.JournalTitle = journal.Title;
+            }
+
+            if (string.IsNullOrWhiteSpace(publication.RubricOecd) &&
+                string.IsNullOrWhiteSpace(publication.RubricGrnti) &&
+                string.IsNullOrWhiteSpace(publication.RubricAsjc) &&
+                !string.IsNullOrWhiteSpace(journal.SubjectArea))
+            {
+                publication.RubricOecd = journal.SubjectArea;
+            }
+        }
+
+        private static string? NormalizeJournalIssn(string? issn)
+        {
+            if (string.IsNullOrWhiteSpace(issn))
+            {
+                return null;
+            }
+
+            return issn
+                .Trim()
+                .ToUpperInvariant()
+                .Replace('Х', 'X')
+                .Replace('х', 'X')
+                .Replace(" ", "");
+        }
+
+        private static string NormalizeJournalTitle(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
+            var normalized = title.Trim().ToUpperInvariant();
+            normalized = normalized.Replace('Ё', 'Е');
+            normalized = Regex.Replace(normalized, @"\s+", " ");
+            normalized = Regex.Replace(normalized, @"[«»""'`]", string.Empty);
+            normalized = normalized.Replace(".", string.Empty);
+
+            return normalized;
         }
 
         private static ScientificActivityDataModels.Enums.PublicationType MapPublicationType(
@@ -392,7 +533,24 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 
         private static string BuildPublicationKey(string title, int year)
         {
-            return $"{title.Trim().ToUpperInvariant()}|{year}";
+            var normalizedTitle = NormalizePublicationTitle(title);
+            return $"{normalizedTitle}|{year}";
+        }
+
+        private static string NormalizePublicationTitle(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
+            var normalized = title.Trim().ToUpperInvariant();
+            normalized = normalized.Replace('Ё', 'Е');
+            normalized = Regex.Replace(normalized, @"\s+", " ");
+            normalized = Regex.Replace(normalized, @"[«»""'`]", string.Empty);
+            normalized = Regex.Replace(normalized, @"\s*[-–—]\s*", "-");
+
+            return normalized;
         }
 
         private ResearcherViewModel? GetResearcherForImport(ELibraryImportBindingModel model)
@@ -753,6 +911,36 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             }
 
             return ids.Contains(eLibraryId);
+        }
+
+        public int ImportAuthorPublications(ELibraryImportBindingModel model, string? progressJobId)
+        {
+            return ImportAuthorPublicationsInternal(model, progressJobId);
+        }
+
+        public int ImportAuthorPublications(ELibraryImportBindingModel model)
+        {
+            return ImportAuthorPublicationsInternal(model, null);
+        }
+
+        private void UpdateImportProgress(
+    string? progressJobId,
+    string statusText,
+    int? current = null,
+    int? total = null,
+    int? percent = null)
+        {
+            if (string.IsNullOrWhiteSpace(progressJobId))
+            {
+                return;
+            }
+
+            _progressService.Update(
+                progressJobId,
+                statusText,
+                current,
+                total,
+                percent);
         }
     }
 }

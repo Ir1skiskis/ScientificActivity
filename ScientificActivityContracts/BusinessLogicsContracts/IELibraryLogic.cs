@@ -22,5 +22,6 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
 
         int ImportAuthorPublications(ELibraryImportBindingModel model);
         void OpenELibraryForManualLogin();
+        int ImportAuthorPublications(ELibraryImportBindingModel model, string? progressJobId);
     }
 }
