@@ -222,7 +222,7 @@ namespace ScientificActivityClientApp.Controllers
         {
             if (APIClient.Researcher == null)
             {
-                return RedirectToAction("Enter", new { error = "Требуется авторизация" });
+                return RedirectToLoginRequired();
             }
 
             UpdateResearcherProfile();
@@ -249,7 +249,7 @@ namespace ScientificActivityClientApp.Controllers
             {
                 if (APIClient.Researcher == null)
                 {
-                    return RedirectToAction("Enter");
+                    return RedirectToLoginRequired();
                 }
 
                 if (string.IsNullOrWhiteSpace(lastName) ||
@@ -472,11 +472,6 @@ namespace ScientificActivityClientApp.Controllers
         [HttpGet]
         public IActionResult Journals(string? title, string? issn, bool? isVak, bool? isWhiteList, int page = 1)
         {
-            if (APIClient.Researcher == null)
-            {
-                return RedirectToAction("Enter");
-            }
-
             try
             {
                 const int pageSize = 25;
@@ -1019,13 +1014,9 @@ namespace ScientificActivityClientApp.Controllers
     DateTime? startDateTo,
     DateTime? endDateFrom,
     DateTime? endDateTo,
+    string? sortOrder,
     int page = 1)
         {
-            if (APIClient.Researcher == null)
-            {
-                return RedirectToAction("Enter");
-            }
-
             try
             {
                 const int pageSize = 12;
@@ -1078,14 +1069,16 @@ namespace ScientificActivityClientApp.Controllers
                 if (!string.IsNullOrWhiteSpace(subject))
                 {
                     var normalizedSubject = subject.Trim();
+
                     query = query.Where(x =>
                         !string.IsNullOrWhiteSpace(x.SubjectArea) &&
                         x.SubjectArea.Contains(normalizedSubject, StringComparison.OrdinalIgnoreCase));
                 }
 
+                var today = DateTime.Today;
+
                 if (onlyUpcoming == true)
                 {
-                    var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
                     query = query.Where(x => x.EndDate.Date >= today);
                 }
 
@@ -1109,10 +1102,45 @@ namespace ScientificActivityClientApp.Controllers
                     query = query.Where(x => x.EndDate.Date <= endDateTo.Value.Date);
                 }
 
-                var filteredConferences = query
-                    .OrderBy(x => x.StartDate)
-                    .ThenBy(x => x.Title)
-                    .ToList();
+                sortOrder = string.IsNullOrWhiteSpace(sortOrder)
+                    ? "actualFirst"
+                    : sortOrder;
+
+                var filteredConferencesSource = query.ToList();
+
+                List<ConferenceViewModel> filteredConferences = sortOrder switch
+                {
+                    "startDateAsc" => filteredConferencesSource
+                        .OrderBy(x => x.StartDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    "startDateDesc" => filteredConferencesSource
+                        .OrderByDescending(x => x.StartDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    "endDateAsc" => filteredConferencesSource
+                        .OrderBy(x => x.EndDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    "endDateDesc" => filteredConferencesSource
+                        .OrderByDescending(x => x.EndDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    _ => filteredConferencesSource
+                        .Where(x => x.EndDate.Date >= today)
+                        .OrderBy(x => x.StartDate)
+                        .ThenBy(x => x.Title)
+                        .Concat(
+                            filteredConferencesSource
+                                .Where(x => x.EndDate.Date < today)
+                                .OrderByDescending(x => x.EndDate)
+                                .ThenBy(x => x.Title))
+                        .ToList()
+                };
 
                 var totalCount = filteredConferences.Count;
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
@@ -1151,6 +1179,7 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.StartDateToValue = startDateTo?.ToString("yyyy-MM-dd");
                 ViewBag.EndDateFromValue = endDateFrom?.ToString("yyyy-MM-dd");
                 ViewBag.EndDateToValue = endDateTo?.ToString("yyyy-MM-dd");
+                ViewBag.SortOrderValue = sortOrder;
 
                 return View(conferences);
             }
@@ -1367,13 +1396,9 @@ namespace ScientificActivityClientApp.Controllers
     DateTime? applicationDateTo,
     DateTime? resultDateFrom,
     DateTime? resultDateTo,
+    string? sortOrder,
     int page = 1)
         {
-            if (APIClient.Researcher == null)
-            {
-                return RedirectToAction("Enter");
-            }
-
             try
             {
                 const int pageSize = 20;
@@ -1401,9 +1426,10 @@ namespace ScientificActivityClientApp.Controllers
                     query = query.Where(x => (int)x.Status == status.Value);
                 }
 
+                var today = DateTime.Today;
+
                 if (onlyActive == true)
                 {
-                    var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
                     query = query.Where(x => x.StartDate.Date >= today);
                 }
 
@@ -1427,10 +1453,45 @@ namespace ScientificActivityClientApp.Controllers
                     query = query.Where(x => x.EndDate.Date <= resultDateTo.Value.Date);
                 }
 
-                var filteredGrants = query
-                    .OrderBy(x => x.StartDate)
-                    .ThenBy(x => x.Title)
-                    .ToList();
+                sortOrder = string.IsNullOrWhiteSpace(sortOrder)
+                    ? "actualFirst"
+                    : sortOrder;
+
+                var filteredGrantsSource = query.ToList();
+
+                List<GrantViewModel> filteredGrants = sortOrder switch
+                {
+                    "startDateAsc" => filteredGrantsSource
+                        .OrderBy(x => x.StartDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    "startDateDesc" => filteredGrantsSource
+                        .OrderByDescending(x => x.StartDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    "endDateAsc" => filteredGrantsSource
+                        .OrderBy(x => x.EndDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    "endDateDesc" => filteredGrantsSource
+                        .OrderByDescending(x => x.EndDate)
+                        .ThenBy(x => x.Title)
+                        .ToList(),
+
+                    _ => filteredGrantsSource
+                        .Where(x => x.StartDate.Date >= today)
+                        .OrderBy(x => x.StartDate)
+                        .ThenBy(x => x.Title)
+                        .Concat(
+                            filteredGrantsSource
+                                .Where(x => x.StartDate.Date < today)
+                                .OrderByDescending(x => x.StartDate)
+                                .ThenBy(x => x.Title))
+                        .ToList()
+                };
 
                 var totalCount = filteredGrants.Count;
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
@@ -1466,6 +1527,7 @@ namespace ScientificActivityClientApp.Controllers
                 ViewBag.ApplicationDateToValue = applicationDateTo?.ToString("yyyy-MM-dd");
                 ViewBag.ResultDateFromValue = resultDateFrom?.ToString("yyyy-MM-dd");
                 ViewBag.ResultDateToValue = resultDateTo?.ToString("yyyy-MM-dd");
+                ViewBag.SortOrderValue = sortOrder;
 
                 return View(grants);
             }
@@ -1671,7 +1733,7 @@ namespace ScientificActivityClientApp.Controllers
         {
             if (APIClient.Researcher == null)
             {
-                return RedirectToAction("Enter");
+                return RedirectToLoginRequired();
             }
 
             var model = APIClient.GetRequest<RecommendationResultViewModel>(
@@ -1842,7 +1904,7 @@ namespace ScientificActivityClientApp.Controllers
         {
             if (APIClient.Researcher == null)
             {
-                return RedirectToAction("Enter", new { error = "Требуется авторизация" });
+                return RedirectToLoginRequired();
             }
 
             var publications = APIClient.GetRequest<List<PublicationViewModel>>(
@@ -2333,6 +2395,12 @@ namespace ScientificActivityClientApp.Controllers
             ViewBag.ConferenceIdValue = conferenceId;
             ViewBag.KeywordsValue = keywords;
             ViewBag.AnnotationValue = annotation;
+        }
+
+        private IActionResult RedirectToLoginRequired()
+        {
+            TempData["Error"] = "Для доступа к этой странице необходимо авторизоваться или зарегистрироваться.";
+            return RedirectToAction("Enter");
         }
     }
 }

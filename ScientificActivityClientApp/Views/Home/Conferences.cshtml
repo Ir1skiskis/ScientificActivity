@@ -19,6 +19,7 @@
     string? startDateToValue = ViewBag.StartDateToValue as string;
     string? endDateFromValue = ViewBag.EndDateFromValue as string;
     string? endDateToValue = ViewBag.EndDateToValue as string;
+    string? sortOrderValue = ViewBag.SortOrderValue as string ?? "actualFirst";
 }
 
 <h2 class="mb-4">Конференции</h2>
@@ -78,7 +79,7 @@
                        placeholder="Страна" />
             </div>
 
-            <div class="col-md-2">
+            <div class="col-md-4">
                 <label class="form-label">Организатор</label>
                 <input type="text"
                        name="organizer"
@@ -87,7 +88,67 @@
                        placeholder="Организатор" />
             </div>
 
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Сортировка</label>
+                <select name="sortOrder" class="form-select">
+                    @if (sortOrderValue == "actualFirst")
+                    {
+                        <option value="actualFirst" selected>Сначала актуальные</option>
+                    }
+                    else
+                    {
+                        <option value="actualFirst">Сначала актуальные</option>
+                    }
+
+                    @if (sortOrderValue == "startDateAsc")
+                    {
+                        <option value="startDateAsc" selected>Дата начала: по возрастанию</option>
+                    }
+                    else
+                    {
+                        <option value="startDateAsc">Дата начала: по возрастанию</option>
+                    }
+
+                    @if (sortOrderValue == "startDateDesc")
+                    {
+                        <option value="startDateDesc" selected>Дата начала: по убыванию</option>
+                    }
+                    else
+                    {
+                        <option value="startDateDesc">Дата начала: по убыванию</option>
+                    }
+
+                    @if (sortOrderValue == "endDateAsc")
+                    {
+                        <option value="endDateAsc" selected>Дата окончания: по возрастанию</option>
+                    }
+                    else
+                    {
+                        <option value="endDateAsc">Дата окончания: по возрастанию</option>
+                    }
+
+                    @if (sortOrderValue == "endDateDesc")
+                    {
+                        <option value="endDateDesc" selected>Дата окончания: по убыванию</option>
+                    }
+                    else
+                    {
+                        <option value="endDateDesc">Дата окончания: по убыванию</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Дата начала: от</label>
+                <input type="date" name="startDateFrom" value="@startDateFromValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Дата начала: до</label>
+                <input type="date" name="startDateTo" value="@startDateToValue" class="form-control" />
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check mb-2">
                     @if (onlyUpcomingChecked)
                     {
@@ -102,16 +163,6 @@
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Дата начала: от</label>
-                <input type="date" name="startDateFrom" value="@startDateFromValue" class="form-control" />
-            </div>
-
-            <div class="col-md-3">
-                <label class="form-label">Дата начала: до</label>
-                <input type="date" name="startDateTo" value="@startDateToValue" class="form-control" />
-            </div>
-
-            <div class="col-md-3">
                 <label class="form-label">Дата окончания: от</label>
                 <input type="date" name="endDateFrom" value="@endDateFromValue" class="form-control" />
             </div>
@@ -121,11 +172,11 @@
                 <input type="date" name="endDateTo" value="@endDateToValue" class="form-control" />
             </div>
 
-            <div class="col-md-2">
+            <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-outline-primary w-100">Применить</button>
             </div>
 
-            <div class="col-md-2">
+            <div class="col-md-2 d-flex align-items-end">
                 <a asp-action="Conferences" class="btn btn-outline-secondary w-100">Сбросить</a>
             </div>
         </div>
@@ -229,7 +280,8 @@ else
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
                        asp-route-endDateFrom="@endDateFromValue"
-                       asp-route-endDateTo="@endDateToValue">
+                       asp-route-endDateTo="@endDateToValue"
+                       asp-route-sortOrder="@sortOrderValue">
                         «
                     </a>
                 </li>
@@ -247,7 +299,8 @@ else
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
                        asp-route-endDateFrom="@endDateFromValue"
-                       asp-route-endDateTo="@endDateToValue">
+                       asp-route-endDateTo="@endDateToValue"
+                       asp-route-sortOrder="@sortOrderValue">
                         Назад
                     </a>
                 </li>
@@ -267,7 +320,8 @@ else
                            asp-route-startDateFrom="@startDateFromValue"
                            asp-route-startDateTo="@startDateToValue"
                            asp-route-endDateFrom="@endDateFromValue"
-                           asp-route-endDateTo="@endDateToValue">
+                           asp-route-endDateTo="@endDateToValue"
+                           asp-route-sortOrder="@sortOrderValue">
                             @i
                         </a>
                     </li>
@@ -286,7 +340,8 @@ else
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
                        asp-route-endDateFrom="@endDateFromValue"
-                       asp-route-endDateTo="@endDateToValue">
+                       asp-route-endDateTo="@endDateToValue"
+                       asp-route-sortOrder="@sortOrderValue">
                         Вперёд
                     </a>
                 </li>
@@ -304,7 +359,8 @@ else
                        asp-route-startDateFrom="@startDateFromValue"
                        asp-route-startDateTo="@startDateToValue"
                        asp-route-endDateFrom="@endDateFromValue"
-                       asp-route-endDateTo="@endDateToValue">
+                       asp-route-endDateTo="@endDateToValue"
+                       asp-route-sortOrder="@sortOrderValue">
                         »
                     </a>
                 </li>
