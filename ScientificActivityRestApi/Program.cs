@@ -89,6 +89,7 @@ builder.Services.AddTransient<IELibraryAuthorProfileStorage, ELibraryAuthorProfi
 builder.Services.AddTransient<IResearcherReportLogic, ResearcherReportLogic>();
 builder.Services.AddTransient<ITagGenerationLogic, TagGenerationLogic>();
 builder.Services.AddSingleton<ImportProgressService>();
+builder.Services.AddSingleton<PasswordHashService>();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

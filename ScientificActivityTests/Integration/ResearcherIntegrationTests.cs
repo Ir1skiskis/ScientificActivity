@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using ScientificActivityBusinessLogics.BusinessLogics;
+using ScientificActivityBusinessLogics.Services;
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.SearchModels;
 using ScientificActivityDatabaseImplement;
@@ -23,7 +24,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             var model = CreateResearcherBindingModel(
                 email: "researcher@example.com",
@@ -52,12 +53,12 @@ namespace ScientificActivityTests.Integration
         }
 
         [Fact]
-        public void ReadElement_WhenSearchByEmailAndPasswordIsCorrect_ShouldReturnResearcher()
+        public void Login_WhenEmailAndPasswordAreCorrect_ShouldReturnResearcher()
         {
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "login@example.com",
@@ -67,11 +68,7 @@ namespace ScientificActivityTests.Integration
                 researchTopics: "программная инженерия"));
 
             // Act
-            var result = logic.ReadElement(new ResearcherSearchModel
-            {
-                Email = "login@example.com",
-                PasswordHash = "password-hash"
-            });
+            var result = logic.Login("login@example.com", "password-hash");
 
             // Assert
             result.Should().NotBeNull();
@@ -80,12 +77,12 @@ namespace ScientificActivityTests.Integration
         }
 
         [Fact]
-        public void ReadElement_WhenPasswordIsIncorrect_ShouldReturnNull()
+        public void Login_WhenPasswordIsIncorrect_ShouldReturnNull()
         {
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "login-error@example.com",
@@ -95,11 +92,7 @@ namespace ScientificActivityTests.Integration
                 researchTopics: "анализ данных"));
 
             // Act
-            var result = logic.ReadElement(new ResearcherSearchModel
-            {
-                Email = "login-error@example.com",
-                PasswordHash = "wrong-password"
-            });
+            var result = logic.Login("login-error@example.com", "wrong-password");
 
             // Assert
             result.Should().BeNull();
@@ -111,7 +104,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "by-id@example.com",
@@ -143,7 +136,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "elibrary@example.com",
@@ -170,7 +163,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "department-1@example.com",
@@ -207,7 +200,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "active@example.com",
@@ -244,7 +237,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "update@example.com",
@@ -302,7 +295,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             logic.Create(CreateResearcherBindingModel(
                 email: "delete@example.com",
@@ -338,7 +331,7 @@ namespace ScientificActivityTests.Integration
             // Arrange
             var options = CreateOptions();
             var storage = new ResearcherStorage(options);
-            var logic = new ResearcherLogic(NullLogger<ResearcherLogic>.Instance, storage);
+            var logic = CreateLogic(storage);
 
             // Act
             var result = logic.ReadList(null);
@@ -353,6 +346,14 @@ namespace ScientificActivityTests.Integration
             return new DbContextOptionsBuilder<ScientificActivityDatabase>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
+        }
+
+        private static ResearcherLogic CreateLogic(ResearcherStorage storage)
+        {
+            return new ResearcherLogic(
+                NullLogger<ResearcherLogic>.Instance,
+                storage,
+                new PasswordHashService());
         }
 
         private static ResearcherBindingModel CreateResearcherBindingModel(

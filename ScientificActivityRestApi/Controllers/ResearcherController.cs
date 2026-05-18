@@ -128,6 +128,27 @@ namespace ScientificActivityRestApi.Controllers
         }
 
         [HttpPost]
+        public IActionResult ChangePassword([FromBody] ChangePasswordBindingModel model)
+        {
+            try
+            {
+                var success = _researcherLogic.ChangePassword(model);
+
+                if (!success)
+                {
+                    return BadRequest("Не удалось изменить пароль");
+                }
+
+                return Ok(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка смены пароля");
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost]
         public IActionResult DeleteResearcher([FromBody] ResearcherBindingModel model)
         {
             try

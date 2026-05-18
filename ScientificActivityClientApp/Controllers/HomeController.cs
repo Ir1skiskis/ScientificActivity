@@ -110,7 +110,6 @@ namespace ScientificActivityClientApp.Controllers
             ViewBag.Phone = "";
             ViewBag.Department = "";
             ViewBag.Position = "";
-            ViewBag.ResearchTopics = "";
             ViewBag.ELibraryAuthorId = "";
             ViewBag.AcademicDegree = 0;
 
@@ -128,8 +127,7 @@ namespace ScientificActivityClientApp.Controllers
             string department,
             string position,
             int academicDegree,
-            string? eLibraryAuthorId,
-            string? researchTopics)
+            string? eLibraryAuthorId)
         {
             try
             {
@@ -142,7 +140,7 @@ namespace ScientificActivityClientApp.Controllers
                     string.IsNullOrWhiteSpace(position))
                 {
                     ViewBag.Error = "Заполните все обязательные поля";
-                    FillRegisterViewBag(lastName, firstName, middleName, email, phone, department, position, researchTopics, eLibraryAuthorId, academicDegree);
+                    FillRegisterViewBag(lastName, firstName, middleName, email, phone, department, position, eLibraryAuthorId, academicDegree);
                     return View();
                 }
 
@@ -158,7 +156,7 @@ namespace ScientificActivityClientApp.Controllers
                     Position = position,
                     AcademicDegree = (AcademicDegree)academicDegree,
                     ELibraryAuthorId = string.IsNullOrWhiteSpace(eLibraryAuthorId) ? null : eLibraryAuthorId,
-                    ResearchTopics = string.IsNullOrWhiteSpace(researchTopics) ? null : researchTopics,
+                    ResearchTopics = null,
                     Role = UserRole.Исследователь,
                     IsActive = true
                 };
@@ -171,7 +169,7 @@ namespace ScientificActivityClientApp.Controllers
             {
                 _logger.LogError(ex, "Ошибка регистрации");
                 ViewBag.Error = ex.Message;
-                FillRegisterViewBag(lastName, firstName, middleName, email, phone, department, position, researchTopics, eLibraryAuthorId, academicDegree);
+                FillRegisterViewBag(lastName, firstName, middleName, email, phone, department, position, eLibraryAuthorId, academicDegree);
                 return View();
             }
         }
@@ -184,6 +182,78 @@ namespace ScientificActivityClientApp.Controllers
         }
 
         // -------------------- Профиль --------------------
+
+        [HttpGet]
+        public IActionResult ChangePassword()
+        {
+            if (APIClient.Researcher == null)
+            {
+                return RedirectToAction("Enter", new { error = "Для смены пароля необходимо войти в систему" });
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult ChangePassword(string oldPassword, string newPassword, string confirmNewPassword)
+        {
+            try
+            {
+                if (APIClient.Researcher == null)
+                {
+                    return RedirectToAction("Enter", new { error = "Для смены пароля необходимо войти в систему" });
+                }
+
+                if (string.IsNullOrWhiteSpace(oldPassword))
+                {
+                    ViewBag.Error = "Введите старый пароль";
+                    return View();
+                }
+
+                if (string.IsNullOrWhiteSpace(newPassword))
+                {
+                    ViewBag.Error = "Введите новый пароль";
+                    return View();
+                }
+
+                if (newPassword.Length < 6)
+                {
+                    ViewBag.Error = "Новый пароль должен содержать не менее 6 символов";
+                    return View();
+                }
+
+                if (newPassword != confirmNewPassword)
+                {
+                    ViewBag.Error = "Новый пароль и подтверждение не совпадают";
+                    return View();
+                }
+
+                var model = new ChangePasswordBindingModel
+                {
+                    ResearcherId = APIClient.Researcher.Id,
+                    OldPassword = oldPassword,
+                    NewPassword = newPassword,
+                    ConfirmNewPassword = confirmNewPassword
+                };
+
+                var result = APIClient.ChangePassword(model);
+
+                if (!result)
+                {
+                    ViewBag.Error = "Не удалось изменить пароль";
+                    return View();
+                }
+
+                TempData["Message"] = "Пароль успешно изменен";
+                return RedirectToAction("Profile");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка смены пароля");
+                ViewBag.Error = ex.Message;
+                return View();
+            }
+        }
 
         private void FillELibraryProfileViewBag()
         {
@@ -242,9 +312,7 @@ namespace ScientificActivityClientApp.Controllers
             string department,
             string position,
             int academicDegree,
-            string? eLibraryAuthorId,
-            string? researchTopics,
-            string? newPassword)
+            string? eLibraryAuthorId)
         {
             try
             {
@@ -273,12 +341,12 @@ namespace ScientificActivityClientApp.Controllers
                     MiddleName = string.IsNullOrWhiteSpace(middleName) ? null : middleName,
                     Email = email,
                     Phone = phone,
-                    PasswordHash = string.IsNullOrWhiteSpace(newPassword) ? string.Empty : newPassword,
+                    PasswordHash = string.Empty,
                     Department = department,
                     Position = position,
                     AcademicDegree = (AcademicDegree)academicDegree,
                     ELibraryAuthorId = string.IsNullOrWhiteSpace(eLibraryAuthorId) ? null : eLibraryAuthorId,
-                    ResearchTopics = string.IsNullOrWhiteSpace(researchTopics) ? null : researchTopics,
+                    ResearchTopics = APIClient.Researcher.ResearchTopics,
                     Role = APIClient.Researcher.Role,
                     IsActive = APIClient.Researcher.IsActive
                 };
@@ -294,7 +362,6 @@ namespace ScientificActivityClientApp.Controllers
                 APIClient.Researcher.Position = position;
                 APIClient.Researcher.AcademicDegree = (AcademicDegree)academicDegree;
                 APIClient.Researcher.ELibraryAuthorId = string.IsNullOrWhiteSpace(eLibraryAuthorId) ? null : eLibraryAuthorId;
-                APIClient.Researcher.ResearchTopics = string.IsNullOrWhiteSpace(researchTopics) ? null : researchTopics;
 
                 ViewBag.Message = "Профиль успешно обновлён";
                 FillProfileViewBags();
@@ -2436,7 +2503,6 @@ namespace ScientificActivityClientApp.Controllers
             string phone,
             string department,
             string position,
-            string? researchTopics,
             string? eLibraryAuthorId,
             int academicDegree)
         {
@@ -2447,7 +2513,6 @@ namespace ScientificActivityClientApp.Controllers
             ViewBag.Phone = phone;
             ViewBag.Department = department;
             ViewBag.Position = position;
-            ViewBag.ResearchTopics = researchTopics;
             ViewBag.ELibraryAuthorId = eLibraryAuthorId;
             ViewBag.AcademicDegree = academicDegree;
         }

@@ -17,5 +17,6 @@ namespace ScientificActivityContracts.StoragesContracts
         ResearcherViewModel? Insert(ResearcherBindingModel model);
         ResearcherViewModel? Update(ResearcherBindingModel model);
         ResearcherViewModel? Delete(ResearcherBindingModel model);
+        string? GetPasswordHashByEmail(string email);
     }
 }

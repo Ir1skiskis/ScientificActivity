@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ScientificActivityBusinessLogics.Services;
 
 namespace ScientificActivityTests.Unit
 {
@@ -25,8 +26,9 @@ namespace ScientificActivityTests.Unit
             _researcherStorageMock = new Mock<IResearcherStorage>();
 
             _logic = new ResearcherLogic(
-                NullLogger<ResearcherLogic>.Instance,
-                _researcherStorageMock.Object);
+            NullLogger<ResearcherLogic>.Instance,
+            _researcherStorageMock.Object,
+            new PasswordHashService());
         }
 
         [Fact]
@@ -50,15 +52,17 @@ namespace ScientificActivityTests.Unit
             result.Should().BeTrue();
 
             _researcherStorageMock.Verify(
-                x => x.Insert(It.Is<ResearcherBindingModel>(m =>
-                    m.Email == "researcher@example.com" &&
-                    m.LastName == "Табеев" &&
-                    m.FirstName == "Александр" &&
-                    m.Phone == "79001234567" &&
-                    m.Department == "Информационные системы" &&
-                    m.Position == "Ассистент" &&
-                    m.ResearchTopics == "информационные системы; машинное обучение")),
-                Times.Once);
+            x => x.Insert(It.Is<ResearcherBindingModel>(m =>
+                m.Email == "researcher@example.com" &&
+                m.LastName == "Табеев" &&
+                m.FirstName == "Александр" &&
+                m.Phone == "79001234567" &&
+                m.Department == "Информационные системы" &&
+                m.Position == "Ассистент" &&
+                m.ResearchTopics == "информационные системы; машинное обучение" &&
+                !string.IsNullOrWhiteSpace(m.PasswordHash) &&
+                m.PasswordHash != "password-hash")),
+            Times.Once);
         }
 
         [Fact]
@@ -362,6 +366,76 @@ namespace ScientificActivityTests.Unit
                 x => x.GetElement(It.Is<ResearcherSearchModel>(m => m.ELibraryAuthorId == "812005")),
                 Times.Once);
         }
+
+        [Fact]
+        public void Login_WhenPasswordIsCorrect_ShouldReturnResearcher()
+        {
+            // Arrange
+            var passwordHashService = new PasswordHashService();
+            var password = "password-hash";
+            var hashedPassword = passwordHashService.HashPassword(password);
+
+            var researcher = new ResearcherViewModel
+            {
+                Id = 1,
+                Email = "researcher@example.com",
+                LastName = "Табеев",
+                FirstName = "Александр",
+                Phone = "79001234567",
+                Department = "Информационные системы",
+                Position = "Ассистент",
+                IsActive = true
+            };
+
+            _researcherStorageMock
+                .Setup(x => x.GetElement(It.Is<ResearcherSearchModel>(m => m.Email == "researcher@example.com")))
+                .Returns(researcher);
+
+            _researcherStorageMock
+                .Setup(x => x.GetPasswordHashByEmail("researcher@example.com"))
+                .Returns(hashedPassword);
+
+            // Act
+            var result = _logic.Login("researcher@example.com", password);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Email.Should().Be("researcher@example.com");
+        }
+
+        [Fact]
+        public void Login_WhenPasswordIsIncorrect_ShouldReturnNull()
+        {
+            // Arrange
+            var passwordHashService = new PasswordHashService();
+            var hashedPassword = passwordHashService.HashPassword("correct-password");
+
+            var researcher = new ResearcherViewModel
+            {
+                Id = 1,
+                Email = "researcher@example.com",
+                LastName = "Табеев",
+                FirstName = "Александр",
+                Phone = "79001234567",
+                Department = "Информационные системы",
+                Position = "Ассистент",
+                IsActive = true
+            };
+
+            _researcherStorageMock
+                .Setup(x => x.GetElement(It.Is<ResearcherSearchModel>(m => m.Email == "researcher@example.com")))
+                .Returns(researcher);
+
+            _researcherStorageMock
+                .Setup(x => x.GetPasswordHashByEmail("researcher@example.com"))
+                .Returns(hashedPassword);
+
+            // Act
+            var result = _logic.Login("researcher@example.com", "wrong-password");
+
+            // Assert
+            result.Should().BeNull();
+        }   
 
         private static ResearcherBindingModel CreateValidResearcherBindingModel()
         {

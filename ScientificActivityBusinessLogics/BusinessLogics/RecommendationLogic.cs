@@ -255,8 +255,8 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 
         public List<TagViewModel> AutoAssignResearcherTagsFromPublications(
     int researcherId,
-    int maxTagsCount = 10,
-    bool replaceExistingTags = false)
+    int maxTagsCount,
+    bool replaceExistingTags)
         {
             _logger.LogInformation(
                 "AutoAssignResearcherTagsFromPublications. ResearcherId:{ResearcherId}, MaxTagsCount:{MaxTagsCount}, ReplaceExistingTags:{ReplaceExistingTags}",

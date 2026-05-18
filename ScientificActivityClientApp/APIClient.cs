@@ -229,5 +229,25 @@ namespace ScientificActivityClientApp
 
             return response.Content.ReadFromJsonAsync<ELibraryAuthorProfileViewModel>().Result;
         }
+
+        public static bool ChangePassword(ChangePasswordBindingModel model)
+        {
+            try
+            {
+                var response = _httpClient.PostAsJsonAsync("api/Researcher/ChangePassword", model).Result;
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = response.Content.ReadAsStringAsync().Result;
+                    throw new Exception($"Смена пароля завершилась ошибкой. StatusCode: {(int)response.StatusCode}. Ответ API: {error}");
+                }
+
+                return response.Content.ReadFromJsonAsync<bool>().Result;
+            }
+            catch
+            {
+                throw;
+            }
+        }
     }
 }

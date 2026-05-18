@@ -16,5 +16,9 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
         bool Create(ResearcherBindingModel model);
         bool Update(ResearcherBindingModel model);
         bool Delete(ResearcherBindingModel model);
+
+        ResearcherViewModel? Login(string email, string password);
+
+        bool ChangePassword(ChangePasswordBindingModel model);
     }
 }

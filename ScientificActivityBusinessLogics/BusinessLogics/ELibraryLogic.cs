@@ -443,16 +443,35 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
 
         private JournalViewModel? FindExistingJournalForPublication(ELibraryPublicationImportModel publication)
         {
-            var publicationIssn = NormalizeJournalIssn(publication.JournalIssn);
-            var publicationTitle = NormalizeJournalTitle(publication.JournalTitle);
-
-            var allJournals = _journalStorage.GetFilteredList(new JournalSearchModel());
-
-            if (!string.IsNullOrWhiteSpace(publicationIssn))
+            if (publication == null)
             {
-                var journalByIssn = allJournals.FirstOrDefault(x =>
-                    NormalizeJournalIssn(x.Issn) == publicationIssn ||
-                    NormalizeJournalIssn(x.EIssn) == publicationIssn);
+                return null;
+            }
+
+            var journals = _journalStorage.GetFullList() ?? new List<JournalViewModel>();
+
+            if (!journals.Any())
+            {
+                return null;
+            }
+
+            var publicationIssns = ExtractIssnCandidates(publication.JournalIssn)
+                .Select(NormalizeIssnForCompare)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (publicationIssns.Any())
+            {
+                var journalByIssn = journals.FirstOrDefault(journal =>
+                {
+                    var journalIssns = ExtractIssnCandidates(journal.Issn)
+                        .Concat(ExtractIssnCandidates(journal.EIssn))
+                        .Select(NormalizeIssnForCompare)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                    return journalIssns.Any(x => publicationIssns.Contains(x));
+                });
 
                 if (journalByIssn != null)
                 {
@@ -460,10 +479,12 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 }
             }
 
+            var publicationTitle = NormalizeJournalTitleForCompare(publication.JournalTitle);
+
             if (!string.IsNullOrWhiteSpace(publicationTitle))
             {
-                var journalByTitle = allJournals.FirstOrDefault(x =>
-                    NormalizeJournalTitle(x.Title) == publicationTitle);
+                var journalByTitle = journals.FirstOrDefault(journal =>
+                    NormalizeJournalTitleForCompare(journal.Title) == publicationTitle);
 
                 if (journalByTitle != null)
                 {
@@ -472,6 +493,67 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             }
 
             return null;
+        }
+
+        private static List<string> ExtractIssnCandidates(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return new List<string>();
+            }
+
+            var matches = System.Text.RegularExpressions.Regex.Matches(
+                value,
+                @"\b\d{4}-?\d{3}[\dXХxх]\b");
+
+            if (matches.Count == 0)
+            {
+                return value
+                    .Split(new[] { ',', ';', '/', '|', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList();
+            }
+
+            return matches
+                .Select(x => x.Value)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+        }
+
+        private static string NormalizeIssnForCompare(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = value
+                .Trim()
+                .ToUpperInvariant()
+                .Replace('Х', 'X')
+                .Replace('х', 'X')
+                .Replace("-", string.Empty)
+                .Replace(" ", string.Empty);
+
+            return normalized;
+        }
+
+        private static string NormalizeJournalTitleForCompare(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = value
+                .Trim()
+                .ToUpperInvariant()
+                .Replace("Ё", "Е");
+
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ");
+
+            return normalized;
         }
 
         private static void ApplyJournalInfoToPublication(

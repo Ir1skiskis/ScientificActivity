@@ -14,6 +14,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ScientificActivityBusinessLogics.Services;
+using ScientificActivityContracts.BusinessLogicsContracts;
 
 namespace ScientificActivityTests.Unit
 {
@@ -25,6 +27,8 @@ namespace ScientificActivityTests.Unit
         private readonly Mock<IELibraryAuthorProfileStorage> _eLibraryAuthorProfileStorageMock;
         private readonly Mock<IJournalStorage> _journalStorageMock;
         private readonly ELibraryLogic _logic;
+        private readonly Mock<IRecommendationLogic> _recommendationLogicMock;
+        private readonly ImportProgressService _progressService;
 
         public ELibraryLogicTests()
         {
@@ -33,6 +37,15 @@ namespace ScientificActivityTests.Unit
             _publicationStorageMock = new Mock<IPublicationStorage>();
             _eLibraryAuthorProfileStorageMock = new Mock<IELibraryAuthorProfileStorage>();
             _journalStorageMock = new Mock<IJournalStorage>();
+            _recommendationLogicMock = new Mock<IRecommendationLogic>();
+            _progressService = new ImportProgressService();
+
+            _recommendationLogicMock
+                .Setup(x => x.AutoAssignResearcherTagsFromPublications(
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<bool>()))
+                .Returns(new List<TagViewModel>());
 
             _logic = new ELibraryLogic(
                 NullLogger<ELibraryLogic>.Instance,
@@ -40,7 +53,9 @@ namespace ScientificActivityTests.Unit
                 _researcherStorageMock.Object,
                 _publicationStorageMock.Object,
                 _eLibraryAuthorProfileStorageMock.Object,
-                _journalStorageMock.Object);
+                _journalStorageMock.Object,
+                _progressService,
+                _recommendationLogicMock.Object);
         }
 
         [Fact]
@@ -246,7 +261,9 @@ namespace ScientificActivityTests.Unit
             };
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(parsedPublications);
 
             _publicationStorageMock
@@ -298,7 +315,9 @@ namespace ScientificActivityTests.Unit
             SetupExistingPublications(existingPublications);
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -363,7 +382,9 @@ namespace ScientificActivityTests.Unit
             SetupExistingPublications(existingPublications);
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -411,7 +432,9 @@ namespace ScientificActivityTests.Unit
             SetupExistingPublications([]);
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -448,8 +471,14 @@ namespace ScientificActivityTests.Unit
             SetupResearcher(CreateResearcher());
             SetupExistingPublications([]);
 
+            _journalStorageMock
+                .Setup(x => x.GetFullList())
+                .Returns(new List<JournalViewModel>());
+
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -520,8 +549,22 @@ namespace ScientificActivityTests.Unit
             SetupResearcher(CreateResearcher());
             SetupExistingPublications([]);
 
+            _journalStorageMock
+                .Setup(x => x.GetFullList())
+                .Returns(new List<JournalViewModel>
+                {
+                    new JournalViewModel
+                    {
+                        Id = 100,
+                        Title = "Журнал информационных систем",
+                        Issn = "1234-5678"
+                    }
+                });
+
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -576,7 +619,9 @@ namespace ScientificActivityTests.Unit
             SetupExistingPublications([]);
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -619,7 +664,9 @@ namespace ScientificActivityTests.Unit
             SetupExistingPublications([]);
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel
@@ -661,8 +708,10 @@ namespace ScientificActivityTests.Unit
             SetupResearcher(CreateResearcher());
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
-                .Returns([]);
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
+                .Returns(new List<ELibraryPublicationImportModel>());
 
             // Act
             var result = _logic.ImportAuthorPublications(new ELibraryImportBindingModel
@@ -694,7 +743,9 @@ namespace ScientificActivityTests.Unit
             SetupExistingPublications([]);
 
             _eLibraryParserMock
-                .Setup(x => x.GetAuthorPublications("812005"))
+                .Setup(x => x.GetAuthorPublications(
+                    "812005",
+                    It.IsAny<Action<ParserProgressModel>?>()))
                 .Returns(new List<ELibraryPublicationImportModel>
                 {
                     new ELibraryPublicationImportModel

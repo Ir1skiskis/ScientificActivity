@@ -114,16 +114,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Научные интересы (текстовое описание)</label>
-                        <textarea name="researchTopics" class="form-control" rows="3" placeholder="Например: искусственный интеллект, анализ данных, медицинские информационные системы">@Model.ResearchTopics</textarea>
-                        <div class="form-text">
-                            Это свободное текстовое описание. Для подбора рекомендаций используйте блок тегов ниже.
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Новый пароль</label>
-                        <input type="password" name="newPassword" class="form-control" />
+                        <a asp-action="ChangePassword" class="btn btn-outline-secondary">
+                            Изменить пароль
+                        </a>
                     </div>
 
                     <div class="mb-3">

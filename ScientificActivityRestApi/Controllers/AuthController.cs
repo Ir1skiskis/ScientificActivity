@@ -48,11 +48,7 @@ namespace ScientificActivityRestApi.Controllers
         {
             try
             {
-                var researcher = _researcherLogic.ReadElement(new ResearcherSearchModel
-                {
-                    Email = email.Trim(),
-                    PasswordHash = password
-                });
+                var researcher = _researcherLogic.Login(email, password);
 
                 if (researcher == null)
                 {

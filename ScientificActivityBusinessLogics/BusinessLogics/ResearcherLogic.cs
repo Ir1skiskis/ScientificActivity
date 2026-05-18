@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using ScientificActivityBusinessLogics.Services;
 using ScientificActivityContracts.BindingModels;
 using ScientificActivityContracts.BusinessLogicsContracts;
 using ScientificActivityContracts.SearchModels;
@@ -16,11 +17,13 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
     {
         private readonly ILogger _logger;
         private readonly IResearcherStorage _researcherStorage;
+        private readonly PasswordHashService _passwordHashService;
 
-        public ResearcherLogic(ILogger<ResearcherLogic> logger, IResearcherStorage researcherStorage)
+        public ResearcherLogic(ILogger<ResearcherLogic> logger, IResearcherStorage researcherStorage, PasswordHashService passwordHashService)
         {
             _logger = logger;
             _researcherStorage = researcherStorage;
+            _passwordHashService = passwordHashService;
         }
 
         public List<ResearcherViewModel>? ReadList(ResearcherSearchModel? model)
@@ -65,6 +68,8 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
         public bool Create(ResearcherBindingModel model)
         {
             CheckModel(model, isCreate: true);
+
+            model.PasswordHash = _passwordHashService.HashPassword(model.PasswordHash);
 
             if (_researcherStorage.Insert(model) == null)
             {
@@ -209,6 +214,153 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
         private static string NormalizePhone(string phone)
         {
             return new string(phone.Where(char.IsDigit).ToArray());
+        }
+
+        public ResearcherViewModel? Login(string email, string password)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new ArgumentException("Введите email", nameof(email));
+            }
+
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                throw new ArgumentException("Введите пароль", nameof(password));
+            }
+
+            email = email.Trim();
+
+            var researcher = _researcherStorage.GetElement(new ResearcherSearchModel
+            {
+                Email = email
+            });
+
+            if (researcher == null)
+            {
+                return null;
+            }
+
+            var storedPasswordHash = _researcherStorage.GetPasswordHashByEmail(email);
+
+            if (string.IsNullOrWhiteSpace(storedPasswordHash))
+            {
+                return null;
+            }
+
+            var isPasswordValid = _passwordHashService.VerifyPassword(password, storedPasswordHash);
+
+            if (!isPasswordValid && storedPasswordHash == password)
+            {
+                var updateModel = new ResearcherBindingModel
+                {
+                    Id = researcher.Id,
+                    Email = researcher.Email,
+                    PasswordHash = _passwordHashService.HashPassword(password),
+                    Role = researcher.Role,
+                    IsActive = researcher.IsActive,
+                    LastName = researcher.LastName,
+                    FirstName = researcher.FirstName,
+                    MiddleName = researcher.MiddleName,
+                    Phone = researcher.Phone,
+                    Department = researcher.Department,
+                    Position = researcher.Position,
+                    AcademicDegree = researcher.AcademicDegree,
+                    ELibraryAuthorId = researcher.ELibraryAuthorId,
+                    ResearchTopics = researcher.ResearchTopics
+                };
+
+                _researcherStorage.Update(updateModel);
+                isPasswordValid = true;
+            }
+
+            if (!isPasswordValid)
+            {
+                return null;
+            }
+
+            return researcher;
+        }
+
+        public bool ChangePassword(ChangePasswordBindingModel model)
+        {
+            if (model == null)
+            {
+                throw new ArgumentNullException(nameof(model));
+            }
+
+            if (model.ResearcherId <= 0)
+            {
+                throw new Exception("Не указан исследователь");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.OldPassword))
+            {
+                throw new Exception("Введите старый пароль");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.NewPassword))
+            {
+                throw new Exception("Введите новый пароль");
+            }
+
+            if (model.NewPassword.Length < 6)
+            {
+                throw new Exception("Новый пароль должен содержать не менее 6 символов");
+            }
+
+            if (model.NewPassword != model.ConfirmNewPassword)
+            {
+                throw new Exception("Новый пароль и подтверждение пароля не совпадают");
+            }
+
+            var researcher = _researcherStorage.GetElement(new ResearcherSearchModel
+            {
+                Id = model.ResearcherId
+            });
+
+            if (researcher == null)
+            {
+                throw new Exception("Исследователь не найден");
+            }
+
+            var storedPasswordHash = _researcherStorage.GetPasswordHashByEmail(researcher.Email);
+
+            if (string.IsNullOrWhiteSpace(storedPasswordHash))
+            {
+                throw new Exception("Не удалось получить данные пароля");
+            }
+
+            var isOldPasswordValid = _passwordHashService.VerifyPassword(model.OldPassword, storedPasswordHash);
+
+            if (!isOldPasswordValid && storedPasswordHash == model.OldPassword)
+            {
+                isOldPasswordValid = true;
+            }
+
+            if (!isOldPasswordValid)
+            {
+                throw new Exception("Старый пароль указан неверно");
+            }
+
+            var updateModel = new ResearcherBindingModel
+            {
+                Id = researcher.Id,
+                Email = researcher.Email,
+                PasswordHash = _passwordHashService.HashPassword(model.NewPassword),
+                Role = researcher.Role,
+                IsActive = researcher.IsActive,
+                LastName = researcher.LastName,
+                FirstName = researcher.FirstName,
+                MiddleName = researcher.MiddleName,
+                Phone = researcher.Phone,
+                Department = researcher.Department,
+                Position = researcher.Position,
+                AcademicDegree = researcher.AcademicDegree,
+                ELibraryAuthorId = researcher.ELibraryAuthorId,
+                ResearchTopics = researcher.ResearchTopics
+            };
+
+            return _researcherStorage.Update(updateModel) != null;
         }
     }
 }

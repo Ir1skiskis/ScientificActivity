@@ -126,12 +126,22 @@ namespace ScientificActivityDatabaseImplement.Implements
                 return null;
             }
 
-            if (!string.IsNullOrWhiteSpace(model.PasswordHash) && element.PasswordHash != model.PasswordHash)
+            return element.GetViewModel;
+        }
+
+        public string? GetPasswordHashByEmail(string email)
+        {
+            using var context = CreateContext();
+
+            if (string.IsNullOrWhiteSpace(email))
             {
                 return null;
             }
 
-            return element.GetViewModel;
+            return context.Researchers
+                .Where(x => x.Email == email.Trim())
+                .Select(x => x.PasswordHash)
+                .FirstOrDefault();
         }
 
         public ResearcherViewModel? Insert(ResearcherBindingModel model)

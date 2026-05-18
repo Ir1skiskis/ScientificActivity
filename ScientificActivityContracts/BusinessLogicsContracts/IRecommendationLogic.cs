@@ -15,7 +15,7 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
 
         List<TagViewModel> AutoAssignResearcherTagsFromPublications(
             int researcherId,
-            int maxTagsCount = 10,
-            bool replaceExistingTags = false);
+            int maxTagsCount,
+            bool replaceExistingTags);
     }
 }
