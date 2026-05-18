@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace ScientificActivityBusinessLogics.BusinessLogics
 {
@@ -250,6 +251,395 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             }
 
             _context.SaveChanges();
+        }
+
+        public List<TagViewModel> AutoAssignResearcherTagsFromPublications(
+    int researcherId,
+    int maxTagsCount = 10,
+    bool replaceExistingTags = false)
+        {
+            _logger.LogInformation(
+                "AutoAssignResearcherTagsFromPublications. ResearcherId:{ResearcherId}, MaxTagsCount:{MaxTagsCount}, ReplaceExistingTags:{ReplaceExistingTags}",
+                researcherId,
+                maxTagsCount,
+                replaceExistingTags);
+
+            var researcherExists = _context.Researchers.Any(x => x.Id == researcherId);
+
+            if (!researcherExists)
+            {
+                throw new InvalidOperationException("Исследователь не найден");
+            }
+
+            var publicationSources = _context.Publications
+    .AsNoTracking()
+    .Where(x => x.ResearcherId == researcherId)
+    .Select(x => new
+    {
+        x.Title,
+        x.Keywords,
+        x.RubricGrnti,
+        x.RubricOecd,
+        x.RubricAsjc,
+        x.VakSpecialty
+    })
+    .ToList();
+
+            var sourceTexts = publicationSources
+                .SelectMany(x => new[]
+                {
+        x.Keywords,
+        x.RubricGrnti,
+        x.RubricOecd,
+        x.RubricAsjc,
+        x.VakSpecialty,
+        x.Title
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!)
+                .ToList();
+
+            if (!sourceTexts.Any())
+            {
+                _logger.LogInformation(
+                    "AutoAssignResearcherTagsFromPublications. Publication thematic fields not found. ResearcherId:{ResearcherId}",
+                    researcherId);
+
+                return GetResearcherTags(researcherId);
+            }
+
+            var keywordCounts = sourceTexts
+    .SelectMany(SplitPublicationThematicText)
+    .Select(x => new
+    {
+        Original = x,
+        Normalized = NormalizeRecommendationText(x)
+    })
+    .Where(x => !string.IsNullOrWhiteSpace(x.Normalized))
+    .Where(x => x.Normalized.Length >= 3)
+    .GroupBy(x => x.Normalized)
+    .Select(group => new KeywordFrequencyModel
+    {
+        NormalizedKeyword = group.Key,
+        DisplayKeyword = group
+            .GroupBy(x => x.Original, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(x => x.Count())
+            .ThenBy(x => x.Key)
+            .First()
+            .Key,
+        Count = group.Count()
+    })
+    .OrderByDescending(x => x.Count)
+    .ThenBy(x => x.DisplayKeyword)
+    .ToList();
+
+            if (!keywordCounts.Any())
+            {
+                _logger.LogInformation(
+                    "AutoAssignResearcherTagsFromPublications. Keywords were empty after normalization. ResearcherId:{ResearcherId}",
+                    researcherId);
+
+                return GetResearcherTags(researcherId);
+            }
+
+            var selectableTags = GetSelectableRecommendationTags();
+
+            if (!selectableTags.Any())
+            {
+                _logger.LogWarning(
+                    "AutoAssignResearcherTagsFromPublications. Selectable tags not found.");
+
+                return GetResearcherTags(researcherId);
+            }
+
+            var matchedTags = keywordCounts
+                .SelectMany(keyword => selectableTags
+                    .Select(tag => new
+                    {
+                        Keyword = keyword,
+                        Tag = tag,
+                        Score = CalculateKeywordTagScore(keyword.NormalizedKeyword, NormalizeRecommendationText(tag.Name), keyword.Count)
+                    }))
+                .Where(x => x.Score > 0)
+                .GroupBy(x => x.Tag.Id)
+                .Select(group => group
+                    .OrderByDescending(x => x.Score)
+                    .ThenByDescending(x => x.Keyword.Count)
+                    .First())
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.Tag.Name)
+                .Take(Math.Max(maxTagsCount, 1))
+                .Select(x => x.Tag)
+                .ToList();
+
+            if (!matchedTags.Any())
+            {
+                _logger.LogInformation(
+                    "AutoAssignResearcherTagsFromPublications. No tags matched publication keywords. ResearcherId:{ResearcherId}",
+                    researcherId);
+
+                return GetResearcherTags(researcherId);
+            }
+
+            if (replaceExistingTags)
+            {
+                var oldLinks = _context.ResearcherTags
+                    .Where(x => x.ResearcherId == researcherId)
+                    .ToList();
+
+                _context.ResearcherTags.RemoveRange(oldLinks);
+            }
+
+            var existingTagIds = _context.ResearcherTags
+                .Where(x => x.ResearcherId == researcherId)
+                .Select(x => x.TagId)
+                .ToHashSet();
+
+            var addedCount = 0;
+
+            foreach (var tag in matchedTags)
+            {
+                if (existingTagIds.Contains(tag.Id))
+                {
+                    continue;
+                }
+
+                _context.ResearcherTags.Add(new ResearcherTag
+                {
+                    ResearcherId = researcherId,
+                    TagId = tag.Id
+                });
+
+                existingTagIds.Add(tag.Id);
+                addedCount++;
+            }
+
+            _context.SaveChanges();
+
+            _logger.LogInformation(
+                "AutoAssignResearcherTagsFromPublications finished. ResearcherId:{ResearcherId}, Matched:{MatchedCount}, Added:{AddedCount}, Tags:{Tags}",
+                researcherId,
+                matchedTags.Count,
+                addedCount,
+                string.Join(", ", matchedTags.Select(x => x.Name)));
+
+            return GetResearcherTags(researcherId);
+        }
+
+        private List<TagViewModel> GetSelectableRecommendationTags()
+        {
+            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
+            var conferenceTagIds = _context.ConferenceTags
+                .Where(x => x.Conference.EndDate >= today)
+                .Select(x => x.TagId);
+
+            var grantTagIds = _context.GrantTags
+                .Where(x => x.Grant.Status == ScientificActivityDataModels.Enums.GrantStatus.Открыт)
+                .Where(x => x.Grant.EndDate >= today)
+                .Select(x => x.TagId);
+
+            var journalTagIds = _context.JournalTags
+                .Select(x => x.TagId);
+
+            var selectableTagIds = conferenceTagIds
+                .Union(grantTagIds)
+                .Union(journalTagIds);
+
+            return _context.Tags
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .Where(x => x.IsSelectable)
+                .Where(x => selectableTagIds.Contains(x.Id))
+                .OrderBy(x => x.Name)
+                .Select(x => new TagViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsActive = x.IsActive,
+                    IsSelectable = x.IsSelectable
+                })
+                .ToList();
+        }
+
+        private static List<string> SplitPublicationThematicText(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return new List<string>();
+            }
+
+            var result = new List<string>();
+
+            var parts = text
+                .Split(new[] { '/', ',', ';', '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Where(x => x.Length >= 3)
+                .ToList();
+
+            foreach (var part in parts)
+            {
+                result.Add(part);
+
+                var normalized = NormalizeRecommendationText(part);
+
+                if (normalized.Contains("ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ"))
+                {
+                    result.Add("Искусственный интеллект");
+                }
+
+                if (normalized.Contains("МАТЕМАТИЧЕСКОЕ МОДЕЛИРОВАНИЕ") ||
+                    normalized.Contains("ТЕОРИЯ МОДЕЛИРОВАНИЯ"))
+                {
+                    result.Add("Моделирование");
+                    result.Add("Математика");
+                }
+
+                if (normalized.Contains("ИНФОРМАЦИОННЫЕ СИСТЕМЫ") ||
+                    normalized.Contains("БАЗЫ ДАННЫХ") ||
+                    normalized.Contains("ИНФОРМАЦИОННЫЙ ПОИСК") ||
+                    normalized.Contains("ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ") ||
+                    normalized.Contains("ВЫЧИСЛИТЕЛЬНАЯ ТЕХНИКА") ||
+                    normalized.Contains("КОМПЬЮТЕРНЫЕ СРЕДСТВА"))
+                {
+                    result.Add("Информационные технологии");
+                }
+
+                if (normalized.Contains("КИБЕРНЕТИКА"))
+                {
+                    result.Add("Информационные технологии");
+                    result.Add("Моделирование");
+                }
+
+                if (normalized.Contains("ПЕДАГОГИКА") ||
+                    normalized.Contains("ОБРАЗОВАНИЕ"))
+                {
+                    result.Add("Образование");
+                    result.Add("Педагогика");
+                }
+
+                if (normalized.Contains("ЭЛЕКТРОНИКА") ||
+                    normalized.Contains("РАДИОТЕХНИКА"))
+                {
+                    result.Add("Микроэлектроника");
+                }
+
+                if (normalized.Contains("АВТОМАТИЗАЦИЯ") ||
+                    normalized.Contains("ЦИФРОВИЗАЦИЯ"))
+                {
+                    result.Add("Информационные технологии");
+                }
+            }
+
+            return result
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static int CalculateKeywordTagScore(string normalizedKeyword, string normalizedTag, int keywordCount)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedKeyword) ||
+                string.IsNullOrWhiteSpace(normalizedTag))
+            {
+                return 0;
+            }
+
+            if (normalizedKeyword == normalizedTag)
+            {
+                return keywordCount * 100;
+            }
+
+            if (normalizedKeyword.Contains(normalizedTag, StringComparison.OrdinalIgnoreCase))
+            {
+                return keywordCount * 80;
+            }
+
+            if (normalizedTag.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase))
+            {
+                return keywordCount * 70;
+            }
+
+            if (normalizedTag == "ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ" &&
+                normalizedKeyword.Contains("ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ", StringComparison.OrdinalIgnoreCase))
+            {
+                return keywordCount * 100;
+            }
+
+            if (normalizedTag == "ИНФОРМАЦИОННЫЕ ТЕХНОЛОГИИ" &&
+                (normalizedKeyword.Contains("ИНФОРМАТИКА", StringComparison.OrdinalIgnoreCase) ||
+                 normalizedKeyword.Contains("ИНФОРМАЦИОНН", StringComparison.OrdinalIgnoreCase) ||
+                 normalizedKeyword.Contains("ВЫЧИСЛИТЕЛЬНАЯ ТЕХНИКА", StringComparison.OrdinalIgnoreCase) ||
+                 normalizedKeyword.Contains("ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ", StringComparison.OrdinalIgnoreCase) ||
+                 normalizedKeyword.Contains("БАЗЫ ДАННЫХ", StringComparison.OrdinalIgnoreCase)))
+            {
+                return keywordCount * 90;
+            }
+
+            if (normalizedTag == "МОДЕЛИРОВАНИЕ" &&
+                (normalizedKeyword.Contains("МОДЕЛИРОВАНИЕ", StringComparison.OrdinalIgnoreCase) ||
+                 normalizedKeyword.Contains("МОДЕЛИРОВАНИЯ", StringComparison.OrdinalIgnoreCase)))
+            {
+                return keywordCount * 90;
+            }
+
+            if (normalizedTag == "МАТЕМАТИКА" &&
+                normalizedKeyword.Contains("МАТЕМАТИЧЕСК", StringComparison.OrdinalIgnoreCase))
+            {
+                return keywordCount * 80;
+            }
+
+            if (normalizedTag == "ОБРАЗОВАНИЕ" &&
+                normalizedKeyword.Contains("ОБРАЗОВАН", StringComparison.OrdinalIgnoreCase))
+            {
+                return keywordCount * 90;
+            }
+
+            if (normalizedTag == "ПЕДАГОГИКА" &&
+                normalizedKeyword.Contains("ПЕДАГОГ", StringComparison.OrdinalIgnoreCase))
+            {
+                return keywordCount * 90;
+            }
+
+            if (normalizedTag == "МИКРОЭЛЕКТРОНИКА" &&
+                (normalizedKeyword.Contains("ЭЛЕКТРОНИКА", StringComparison.OrdinalIgnoreCase) ||
+                 normalizedKeyword.Contains("РАДИОТЕХНИКА", StringComparison.OrdinalIgnoreCase)))
+            {
+                return keywordCount * 70;
+            }
+
+            return 0;
+        }
+
+        private static string NormalizeRecommendationText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var result = value
+                .Trim()
+                .ToUpperInvariant()
+                .Replace("Ё", "Е");
+
+            result = Regex.Replace(result, @"\s+", " ");
+            result = Regex.Replace(result, @"\s*\.\s*", ".");
+            result = Regex.Replace(result, @"\s*,\s*", ", ");
+            result = Regex.Replace(result, @"\s*;\s*", "; ");
+
+            return result.Trim();
+        }
+
+        private class KeywordFrequencyModel
+        {
+            public string DisplayKeyword { get; set; } = string.Empty;
+
+            public string NormalizedKeyword { get; set; } = string.Empty;
+
+            public int Count { get; set; }
         }
     }
 }

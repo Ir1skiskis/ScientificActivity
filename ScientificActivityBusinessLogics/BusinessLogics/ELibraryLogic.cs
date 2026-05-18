@@ -25,6 +25,7 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
         private readonly IELibraryAuthorProfileStorage _eLibraryAuthorProfileStorage;
         private readonly IJournalStorage _journalStorage;
         private readonly ImportProgressService _progressService;
+        private readonly IRecommendationLogic _recommendationLogic;
 
         public ELibraryLogic(
             ILogger<ELibraryLogic> logger,
@@ -33,7 +34,8 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             IPublicationStorage publicationStorage,
             IELibraryAuthorProfileStorage eLibraryAuthorProfileStorage,
             IJournalStorage journalStorage, 
-            ImportProgressService progressService)
+            ImportProgressService progressService,
+            IRecommendationLogic recommendationLogic)
         {
             _logger = logger;
             _eLibraryParser = eLibraryParser;
@@ -42,6 +44,7 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
             _journalStorage = journalStorage;
             _eLibraryAuthorProfileStorage = eLibraryAuthorProfileStorage;
             _progressService = progressService;
+            _recommendationLogic = recommendationLogic;
         }
 
 
@@ -354,6 +357,33 @@ namespace ScientificActivityBusinessLogics.BusinessLogics
                 updatedCount,
                 skippedCount,
                 processedCount);
+
+            try
+            {
+                UpdateImportProgress(
+                    progressJobId,
+                    "Автоматический подбор тегов по ключевым словам публикаций",
+                    current: totalCount,
+                    total: totalCount,
+                    percent: 99);
+
+                var assignedTags = _recommendationLogic.AutoAssignResearcherTagsFromPublications(
+                    researcher.Id,
+                    maxTagsCount: 10,
+                    replaceExistingTags: false);
+
+                _logger.LogInformation(
+                    "ELibrary.ImportAuthorPublications. Auto assigned researcher tags. ResearcherId:{ResearcherId}, Tags:{Tags}",
+                    researcher.Id,
+                    string.Join(", ", assignedTags.Select(x => x.Name)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Не удалось автоматически назначить теги исследователю после импорта публикаций. ResearcherId:{ResearcherId}",
+                    researcher.Id);
+            }
 
             UpdateImportProgress(
                 progressJobId,

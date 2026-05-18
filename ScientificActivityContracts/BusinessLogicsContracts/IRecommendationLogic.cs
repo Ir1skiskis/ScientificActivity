@@ -12,5 +12,10 @@ namespace ScientificActivityContracts.BusinessLogicsContracts
         RecommendationResultViewModel GetRecommendations(int researcherId);
         List<TagViewModel> GetResearcherTags(int researcherId);
         void SaveResearcherTags(int researcherId, List<int> tagIds);
+
+        List<TagViewModel> AutoAssignResearcherTagsFromPublications(
+            int researcherId,
+            int maxTagsCount = 10,
+            bool replaceExistingTags = false);
     }
 }
